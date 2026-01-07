@@ -1,0 +1,383 @@
+/* Tag selection modal styles */
+.quicktag-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 15px 0;
+    padding: 15px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-primary);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.quicktag-tag-btn {
+    padding: 6px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.quicktag-tag-btn:hover {
+    background: var(--background-modifier-hover);
+    transform: translateY(-1px);
+}
+
+.quicktag-tag-selected {
+    background: var(--interactive-accent) !important;
+    color: var(--text-on-accent) !important;
+    border-color: var(--interactive-accent) !important;
+}
+
+.quicktag-button-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.tag-instruction, .setting-description {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    margin-top: -5px;
+    margin-bottom: 15px;
+}
+
+/* ==================== SIDEBAR TAG MANAGER STYLES ==================== */
+.tag-manager-container {
+    padding: 10px 12px;
+    height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.tag-manager-stats {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    margin: 8px 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Search and sort container */
+/* Search and sort container - dropdown version */
+.tag-search-sort-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    align-items: center;
+    position: relative; /* For absolute positioning of dropdown */
+}
+
+.tag-search-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 14px;
+    min-width: 0;
+}
+
+/* Sort select button (triggers dropdown) */
+.tag-sort-button {
+    padding: 8px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 14px;
+    cursor: pointer;
+    min-width: 120px;
+    text-align: left;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.tag-sort-button:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+
+.tag-sort-button::after {
+    content: '▼';
+    font-size: 10px;
+    margin-left: 8px;
+    opacity: 0.7;
+}
+
+/* Floating dropdown overlay */
+.tag-sort-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 180px;
+    z-index: 1000;
+    overflow: hidden;
+    display: none; /* Hidden by default */
+}
+
+.tag-sort-dropdown.active {
+    display: block;
+    animation: dropdownFadeIn 0.2s ease;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Dropdown items */
+.tag-sort-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tag-sort-item:last-child {
+    border-bottom: none;
+}
+
+.tag-sort-item:hover {
+    background: var(--background-modifier-hover);
+}
+
+.tag-sort-item.active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+/* Icon and text in dropdown */
+.sort-icon {
+    margin-right: 10px;
+    font-size: 12px;
+    width: 20px;
+    text-align: center;
+}
+
+.sort-text {
+    flex: 1;
+    font-size: 13px;
+}
+
+/* Overlay backdrop (optional) */
+.tag-sort-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    z-index: 999;
+    display: none;
+}
+
+.tag-sort-backdrop.active {
+    display: block;
+}
+
+/* Tags list */
+.tag-manager-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    padding-right: 5px;
+}
+
+.tag-manager-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    margin: 5px 0;
+    border-radius: 6px;
+    background: var(--background-secondary);
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.tag-manager-item:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border);
+}
+
+/* Tag content with name and count */
+.tag-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    cursor: pointer;
+    padding: 2px 0;
+}
+
+.tag-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-normal);
+    transition: color 0.2s ease;
+}
+
+.tag-manager-item:hover .tag-name {
+    color: var(--interactive-accent);
+}
+
+/* Tag count badge */
+.tag-count {
+    background: var(--background-secondary-alt);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.tag-manager-item:hover .tag-count {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+/* Popular tag count styling */
+.tag-count.high-use {
+    background: var(--color-orange);
+    color: var(--text-on-accent);
+}
+
+.tag-count.medium-use {
+    background: var(--color-yellow);
+    color: var(--text-normal);
+}
+
+.tag-count.low-use {
+    background: var(--background-modifier-border);
+    color: var(--text-muted);
+}
+
+/* Special styling for zero usage */
+.tag-count.zero-use {
+    opacity: 0.5;
+    font-weight: normal;
+}
+
+.tag-delete-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    transition: all 0.2s ease;
+}
+
+.tag-delete-btn:hover {
+    opacity: 1;
+    background: var(--text-error);
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Add tag section */
+.tag-add-section {
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+.tag-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.tag-add-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 14px;
+}
+
+.tag-add-btn {
+    padding: 8px 16px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.tag-add-btn:hover {
+    background: var(--interactive-accent-hover);
+}
+
+/* Scrollbar styling */
+.tag-manager-list::-webkit-scrollbar,
+.tag-manager-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tag-manager-list::-webkit-scrollbar-track,
+.tag-manager-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.tag-manager-list::-webkit-scrollbar-thumb,
+.tag-manager-container::-webkit-scrollbar-thumb {
+    background: var(--background-modifier-border);
+    border-radius: 3px;
+}
+
+.tag-manager-list::-webkit-scrollbar-thumb:hover,
+.tag-manager-container::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* Tag selection modal improvements */
+.quicktag-tag-btn .tag-count {
+    margin-left: 4px;
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+.quicktag-tag-selected .tag-count {
+    color: var(--text-on-accent) !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+}
