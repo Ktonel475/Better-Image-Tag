@@ -644,15 +644,15 @@ class TagManagerView {
         
         // Sort button (triggers dropdown)
         const sortButton = searchSortContainer.createEl('button', {
-            text: 'Sort by Count ▼',
-            cls: 'tag-sort-button'
+            text: 'Sort by Count',
+            cls: 'tag-sort-btn'
         });
         
         // Floating dropdown overlay
         const dropdown = searchSortContainer.createDiv('tag-sort-dropdown');
         
         const sortOptions = [
-            { id: 'count', text: 'Count', icon: '↓', label: 'Sort by Count ▼' },
+            { id: 'count', text: 'Count', icon: '↓', label: 'Sort by Count' },
             { id: 'name', text: 'Name A-Z', icon: 'A-Z', label: 'Sort by Name A-Z' },
             { id: 'relevance', text: 'Relevance', icon: '★', label: 'Sort by Relevance' }
         ];
@@ -679,7 +679,7 @@ class TagManagerView {
                 // Perform sort
                 if (option.id === 'relevance' && !searchTerm) {
                     this.sortTags('count');
-                    sortButton.textContent = 'Sort by Count ▼';
+                    sortButton.textContent = 'Sort by Count';
                 } else if (option.id === 'relevance') {
                     this.sortTags('relevance', searchTerm);
                 } else {
@@ -866,7 +866,7 @@ class TagManagerView {
         tagItems.sort((a, b) => {
             const aName = a.querySelector('.tag-name')?.textContent || '';
             const bName = b.querySelector('.tag-name')?.textContent || '';
-            return aName.localeCompare(bName);
+            return aName.localeCompare(bName, undefined, { numeric: true });
         });
     }
 
