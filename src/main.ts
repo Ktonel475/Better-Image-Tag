@@ -1,11 +1,54 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, Setting, PluginSettingTab, ItemView, WorkspaceLeaf, TFile } from 'obsidian';
-import { QuickTagSettings, DEFAULT_SETTINGS } from 'settings';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, Setting as PluginSettings, PluginSettingTab, ItemView, WorkspaceLeaf, TFile } from 'obsidian';
+import { ImageTagSettings, DEFAULT_SETTINGS } from 'settings';
 
 const VIEW_TYPE_TAG_MANAGER = 'tag-manager-view';
 
+class ConfirmationModal extends Modal {
+    private resolvePromise: (value: boolean) => void;
+    public promise: Promise<boolean>;
+
+    constructor(app: App, message: string) {
+        super(app);
+        
+        this.promise = new Promise((resolve) => {
+            this.resolvePromise = resolve;
+        });
+
+        this.contentEl.createEl('p', { text: message });
+
+        const buttonContainer = this.contentEl.createDiv({ cls: 'modal-button-container' });
+
+        buttonContainer.createEl('button', { text: 'Cancel' })
+            .addEventListener('click', () => {
+                this.resolvePromise(false);
+                this.close();
+            });
+
+        const confirmBtn = buttonContainer.createEl('button', { 
+            text: 'Confirm',
+            cls: 'mod-cta' // Makes it the primary action button
+        });
+        confirmBtn.addEventListener('click', () => {
+            this.resolvePromise(true);
+            this.close();
+        });
+
+        // Optional: Close on Escape key
+        this.scope.register([], 'Escape', () => {
+            this.resolvePromise(false);
+            this.close();
+            return false;
+        });
+    }
+
+    onOpen() {
+        void super.onOpen();
+    }
+}
+
 // ==================== MAIN PLUGIN CLASS ====================
-export default class QuickTagPlugin extends Plugin {
-    settings: QuickTagSettings;
+export default class ImageTagPlugin extends Plugin {
+    settings: ImageTagSettings;
     allTags: string[] = [];
 
     async onload() {
@@ -17,7 +60,7 @@ export default class QuickTagPlugin extends Plugin {
     
 		if (isFirstInstall) {        
             // Show notice of scanning existing tags from vault
-			new Notice('QuickTag: Scanning your vault for existing tags...');
+			new Notice('Scanning your vault for existing tags...');
 			
 			// Scan for existing tags
 			const existingTags = await this.scanForExistingTags();
@@ -29,10 +72,10 @@ export default class QuickTagPlugin extends Plugin {
 				await this.saveSettings();
 				this.allTags = this.settings.tags;
 				
-				new Notice(`QuickTag: Added ${existingTags.length} existing tags from your vault`);
+				new Notice(`ImageTag: Added ${existingTags.length} existing tags from your vault`);
 			}
             //Activate Icon on tab by default
-            this.activateTagManagerView();
+            await this.activateTagManagerView();
 		}
 		this.registerEvent(
 			this.app.workspace.on('file-menu', (menu, file) => {
@@ -40,7 +83,7 @@ export default class QuickTagPlugin extends Plugin {
 				if (file instanceof TFile && this.isImageFile(file)) {
 					menu.addItem((item) => {
 						item
-							.setTitle('Tag with QuickTag')
+							.setTitle('Image tag')
 							.setIcon('tag')
 							.onClick(async () => {
 								await this.tagImageFile(file);
@@ -90,7 +133,9 @@ export default class QuickTagPlugin extends Plugin {
             id: 'open-tag-manager-sidebar',
             name: 'Open tag manager sidebar',
             callback: () => {
-                this.activateTagManagerView();
+                this.activateTagManagerView().catch(error => {
+                    console.error(error);
+                });
             }
         });
 
@@ -101,9 +146,9 @@ export default class QuickTagPlugin extends Plugin {
         );
 
         // Add settings tab
-        this.addSettingTab(new QuickTagSettingTab(this.app, this));
+        this.addSettingTab(new ImageTagSettingTab(this.app, this));
 
-        console.log('QuickTag plugin loaded');
+        console.debug('ImageTag plugin loaded');
     }
 
     // Helper to extract image link
@@ -120,7 +165,7 @@ export default class QuickTagPlugin extends Plugin {
 
     // Settings management
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<ImageTagSettings>);
     }
 
     async saveSettings() {
@@ -176,14 +221,16 @@ export default class QuickTagPlugin extends Plugin {
         
         // Reveal the leaf if we have one
         if (leaf) {
-            workspace.revealLeaf(leaf);
+            workspace.revealLeaf(leaf).catch(error => {
+                console.error(error);
+            });
         }
     }
 	async scanForExistingTags(): Promise<string[]> {
 		const foundTags = new Set<string>();
 		const files = this.app.vault.getMarkdownFiles();
 		
-		console.log(`QuickTag: Scanning ${files.length} files for existing tags...`);
+		console.debug(`ImageTag: Scanning ${files.length} files for existing tags...`);
 		
 		for (const file of files) {
 			try {
@@ -213,12 +260,12 @@ export default class QuickTagPlugin extends Plugin {
 					tags.forEach(tag => foundTags.add(tag));
 				}
 			} catch (error) {
-				console.error(`QuickTag: Error reading ${file.path}:`, error);
+				console.error(`ImageTag: Error reading ${file.path}:`, error);
 			}
 		}
 		
 		const uniqueTags = Array.from(foundTags);
-		console.log(`QuickTag: Found ${uniqueTags.length} unique tags in vault`);
+		console.debug(`ImageTag: Found ${uniqueTags.length} unique tags in vault`);
 		return uniqueTags;
 	}
 	// Helper: Check if file is an image
@@ -239,7 +286,7 @@ export default class QuickTagPlugin extends Plugin {
 	}
 
     onunload() {
-        console.log('QuickTag plugin unloaded');
+        console.debug('ImageTag plugin unloaded');
     }
 }
 
@@ -273,41 +320,41 @@ class TagModal extends Modal {
             cls: 'tag-instruction'
         });
         
-        const tagsContainer = contentEl.createDiv('quicktag-tags-container');
+        const tagsContainer = contentEl.createDiv('ImageTag-tags-container');
         
         // Display all tags as clickable buttons
         this.allTags.forEach(tag => {
             const btn = tagsContainer.createEl('button', {
                 text: tag,
-                cls: 'quicktag-tag-btn'
+                cls: 'ImageTag-tag-btn'
             });
             
             if (this.selectedTags.has(tag)) {
-                btn.addClass('quicktag-tag-selected');
+                btn.addClass('ImageTag-tag-selected');
             }
             
             btn.addEventListener('click', () => {
                 if (this.selectedTags.has(tag)) {
                     this.selectedTags.delete(tag);
-                    btn.removeClass('quicktag-tag-selected');
+                    btn.removeClass('ImageTag-tag-selected');
                 } else {
                     this.selectedTags.add(tag);
-                    btn.addClass('quicktag-tag-selected');
+                    btn.addClass('ImageTag-tag-selected');
                 }
             });
         });
 
         // Author input
-        new Setting(contentEl)
-            .setName('Artist/Author (optional)')
+        new PluginSettings(contentEl)
+            .setName('Author (optional)')
             .setDesc('Who created this image?')
             .addText(text => text
-                .setPlaceholder('e.g., John Doe, Studio Name')
+                .setPlaceholder('E.g. ,author name, studio name')
                 .setValue(this.author)
                 .onChange(value => this.author = value));
 
         // Note content
-        new Setting(contentEl)
+        new PluginSettings(contentEl)
             .setName('Notes (optional)')
             .setDesc('Add any observations or thoughts')
             .addTextArea(text => text
@@ -316,11 +363,11 @@ class TagModal extends Modal {
                 .onChange(value => this.noteContent = value));
 
         // Action buttons
-        const buttonContainer = contentEl.createDiv('quicktag-button-container');
+        const buttonContainer = contentEl.createDiv('ImageTag-button-container');
         
-        new Setting(buttonContainer)
+        new PluginSettings(buttonContainer)
             .addButton(btn => btn
-                .setButtonText('Create Note')
+                .setButtonText('Create note')
                 .setCta()
                 .onClick(() => this.createNote()))
             .addButton(btn => btn
@@ -368,9 +415,9 @@ ${this.noteContent ? `## Notes\n\n${this.noteContent}` : ''}`;
             await this.app.vault.create(fullPath, fullContent);
             
             // Open the note if setting is enabled
-            // @ts-ignore
-            
-            if (this.app.plugins.plugins.quicktag?.settings?.autoOpenModal) {
+            //@ts-ignore
+             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            if (this.app.plugins.plugins?.ImageTag?.settings?.autoOpenModal) {
                 const leaf = this.app.workspace.getLeaf();
                 const file = this.app.vault.getAbstractFileByPath(fullPath);
                 if (file) {
@@ -382,7 +429,7 @@ ${this.noteContent ? `## Notes\n\n${this.noteContent}` : ''}`;
             new Notice(`Created: ${fileName}`);
         } catch (error) {
             console.error('Error creating note:', error);
-            new Notice(`Failed to create note: ${error}`);
+            new Notice('Failed to create note');
         }
 
         this.close();
@@ -396,16 +443,17 @@ ${this.noteContent ? `## Notes\n\n${this.noteContent}` : ''}`;
 
 // ==================== SIDEBAR TAG MANAGER ====================
 class TagManagerView {
-    plugin: QuickTagPlugin;
+    plugin: ImageTagPlugin;
     containerEl: HTMLElement;
     tagInputEl: HTMLInputElement;
+    app: App;
 
     private sortButtons?: {
         nameBtn: HTMLButtonElement;
         countBtn: HTMLButtonElement;
     };
 
-    constructor(plugin: QuickTagPlugin, containerEl: HTMLElement) {
+    constructor(plugin: ImageTagPlugin, containerEl: HTMLElement) {
         this.plugin = plugin;
         this.containerEl = containerEl;
         this.render();
@@ -415,7 +463,7 @@ class TagManagerView {
         this.containerEl.empty();
         
         // Header
-        this.containerEl.createEl('h3', { text: 'Tag Manager' });
+        this.containerEl.createEl('h3', { text: 'Tag manager' });
         
         // Stats
         const tagCount = this.plugin.settings.tags.length;
@@ -472,30 +520,13 @@ class TagManagerView {
         
         // Tag name container
         const tagContent = tagItem.createDiv('tag-content');
-
-        // Tag count badge
-        const countBadge = tagContent.createEl('span', {
-            text: tagCount.toString(),
-            cls: 'tag-count'
-        });
-        
-        // Tag name
-        const tagName = tagContent.createEl('span', {
-            text: tag,
-            cls: 'tag-name'
-        });
-        
         
         tagContent.addEventListener('click', () => {
             // Copy tag to clipboard for easy use
-            navigator.clipboard.writeText(tag);
+            navigator.clipboard.writeText(tag).catch(error => {
+                console.error(error);
+            });
             new Notice(`Copied: ${tag}`);
-            
-            // Visual feedback
-            tagContent.style.color = 'var(--interactive-accent)';
-            setTimeout(() => {
-                tagContent.style.color = '';
-            }, 500);
         });
 
         // Delete button
@@ -505,19 +536,28 @@ class TagManagerView {
             title: 'Delete tag'
         });
 
-        deleteBtn.addEventListener('click', async (e) => {
-            e.stopPropagation(); // Prevent triggering the copy function
-            
-            if (tagCount > 0) {
-                // Show warning for tags that are in use
-                const confirmed = await this.showDeleteWarning(tag, tagCount);
-                if (!confirmed) return;
-            } else {
-                // Simple confirmation for unused tags
-                if (!confirm(`Delete tag "${tag}"?`)) return;
-            }
-            
-            await this.handleTagDeletion(tag);
+        deleteBtn.addEventListener('click', (e) => {
+            // Prevent triggering the copy function
+            e.stopPropagation(); 
+
+            void (async () => {
+                let confirmed = false;
+                if (tagCount > 0) {
+                    // Show warning for tags that are in use
+                    confirmed = await this.showDeleteWarning(tag, tagCount);
+                } else {
+                    const modal = new ConfirmationModal(this.app, `Delete tag "${tag}"?`);
+                    modal.open();
+                    confirmed = await modal.promise; 
+                }
+                if (confirmed) {
+                    await this.handleTagDeletion(tag);
+                    new Notice(`Deleted tag "${tag}"`);
+                }
+            })().catch(error => {
+                console.error("Failed to delete tag", error);
+                new Notice('Failed to delete tag');
+            });
         });
         
         return tagItem;
@@ -538,11 +578,15 @@ class TagManagerView {
             cls: 'tag-add-btn'
         });
         
-        addBtn.addEventListener('click', () => this.addNewTag());
+        addBtn.addEventListener('click', () => 
+            void this.addNewTag()
+                .catch(error => {
+                    console.error("Fail to add new tag: ", error);
+                }));
         
         this.tagInputEl.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                this.addNewTag();
+                void this.addNewTag();
             }
         });
     }
@@ -644,7 +688,7 @@ class TagManagerView {
         
         // Sort button (triggers dropdown)
         const sortButton = searchSortContainer.createEl('button', {
-            text: 'Sort by Count',
+            text: 'Sort by count',
             cls: 'tag-sort-btn'
         });
         
@@ -679,7 +723,7 @@ class TagManagerView {
                 // Perform sort
                 if (option.id === 'relevance' && !searchTerm) {
                     this.sortTags('count');
-                    sortButton.textContent = 'Sort by Count';
+                    sortButton.textContent = 'Sort by count';
                 } else if (option.id === 'relevance') {
                     this.sortTags('relevance', searchTerm);
                 } else {
@@ -711,23 +755,22 @@ class TagManagerView {
             
             if (searchTerm) {
                 this.sortTags('relevance', searchTerm);
-                sortButton.textContent = 'Sort by Relevance';
+                sortButton.textContent = 'Sort by relevance';
             }
         });
     }
 
     async showConfirmation(message: string): Promise<boolean> {
-        return new Promise((resolve) => {
-            // Simple browser confirmation for now
-            resolve(confirm(message));
-        });
+        const modal = new ConfirmationModal(this.app, message);
+        modal.open();
+        return await modal.promise; // Just return the modal's promise directly
     }
 
     private async showDeleteWarning(tag: string, usageCount: number): Promise<boolean> {
         return new Promise((resolve) => {
             // Create custom modal for better UX
             const modal = new Modal(this.plugin.app);
-            modal.titleEl.setText('⚠️ Delete Tag Warning');
+            modal.titleEl.setText('Delete tag warning');
             
             const content = modal.contentEl;
             content.createEl('p', {
@@ -761,7 +804,7 @@ class TagManagerView {
                 text: `Delete from ${usageCount} file${usageCount > 1 ? 's' : ''}`,
                 cls: 'tag-delete-confirm-btn'
             });
-            confirmBtn.addEventListener('click', async () => {
+            confirmBtn.addEventListener('click', () => {
                 modal.close();
                 resolve(true);
             });
@@ -777,9 +820,13 @@ class TagManagerView {
             
             if (removed) {
                 // Remove tag from all markdown files
-                await this.removeTagFromAllFiles(tag);
+                await this.removeTagFromAllFiles(tag).catch(error => {
+                    console.error("Tag Removal Error", error)
+                });
                 
-                this.DeleteTag(tag);
+               await this.DeleteTag(tag).catch(error => {
+                    console.error("Tag Deletion Error:", error);
+               });
                 
                 // Update stats
                 this.updateStats();
@@ -858,7 +905,7 @@ class TagManagerView {
             }
         }
         
-        console.log(`Removed tag "${tag}" from ${updatedFiles} files`);
+        console.debug(`Removed tag "${tag}" from ${updatedFiles} files`);
     }
 
     // Sort alphabetically (A-Z)
@@ -944,10 +991,10 @@ class TagManagerView {
 
 // ==================== TAG MANAGER SIDEBAR VIEW ====================
 class TagManagerSidebarView extends ItemView {
-    plugin: QuickTagPlugin;
+    plugin: ImageTagPlugin;
     tagManager: TagManagerView | null = null;
 
-    constructor(leaf: WorkspaceLeaf, plugin: QuickTagPlugin) {
+    constructor(leaf: WorkspaceLeaf, plugin: ImageTagPlugin) {
         super(leaf);
         this.plugin = plugin;
     }
@@ -957,7 +1004,7 @@ class TagManagerSidebarView extends ItemView {
     }
 
     getDisplayText(): string {
-        return 'Tag Manager';
+        return 'Tag manager';
     }
 
     getIcon(): string {
@@ -984,10 +1031,10 @@ class TagManagerSidebarView extends ItemView {
 }
 
 // ==================== SETTINGS TAB ====================
-class QuickTagSettingTab extends PluginSettingTab {
-    plugin: QuickTagPlugin;
+class ImageTagSettingTab extends PluginSettingTab {
+    plugin: ImageTagPlugin;
 
-    constructor(app: App, plugin: QuickTagPlugin) {
+    constructor(app: App, plugin: ImageTagPlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }
@@ -996,14 +1043,14 @@ class QuickTagSettingTab extends PluginSettingTab {
         const {containerEl} = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'QuickTag Settings' });
+        new PluginSettings(containerEl).setName("Image tag settings").setHeading();
 
         // Default folder setting
-        new Setting(containerEl)
+        new PluginSettings(containerEl)
             .setName('Default folder')
             .setDesc('Where to save image reference notes')
             .addText(text => text
-                .setPlaceholder('Image Library')
+                .setPlaceholder('Image library')
                 .setValue(this.plugin.settings.defaultFolder)
                 .onChange(async (value) => {
                     this.plugin.settings.defaultFolder = value;
@@ -1011,7 +1058,7 @@ class QuickTagSettingTab extends PluginSettingTab {
                 }));
 
         // Auto-open modal setting
-        new Setting(containerEl)
+        new PluginSettings(containerEl)
             .setName('Auto-open notes')
             .setDesc('Automatically open newly created notes')
             .addToggle(toggle => toggle
@@ -1022,36 +1069,46 @@ class QuickTagSettingTab extends PluginSettingTab {
                 }));
 
         // Tag manager section
-        containerEl.createEl('h3', { text: 'Tag Management' });
+        new PluginSettings(containerEl).setName("Tag management").setHeading();
         containerEl.createEl('p', { 
             text: 'Open the sidebar tag manager to add, remove, or edit tags.',
             cls: 'setting-description'
         });
 
         // Open sidebar button
-        new Setting(containerEl)
+        new PluginSettings(containerEl)
             .setName('Tag manager sidebar')
             .setDesc('Open the tag manager in the sidebar')
             .addButton(btn => btn
-                .setButtonText('Open Sidebar')
+                .setButtonText('Open sidebar')
                 .setCta()
                 .onClick(() => {
-                    this.plugin.activateTagManagerView();
+                    this.plugin.activateTagManagerView().catch(error => {
+                            console.error('Failed to open tag manager:', error);
+                            // Show notice to user
+                            new Notice('Failed to open tag manager');
+                        });
                 }));
 		// Tag scanning section
-		new Setting(containerEl)
+		new PluginSettings(containerEl)
 			.setName('Scan vault for tags')
 			.setDesc('Find all existing #tags in your vault and add them to the tag manager')
 			.addButton(btn => btn
-				.setButtonText('Scan Now')
+				.setButtonText('Scan now')
 				.onClick(async () => {
-					const confirmed = confirm('Scan your entire vault for existing tags? This may take a few moments.');
+                    const modal = new ConfirmationModal(this.app, 'Scan your entire vault for existing tags? This may take a few moments.');
+                    modal.open();
+					let confirmed =  false
+                    confirmed = await modal.promise;
 					if (confirmed) {
 						const existingTags = await this.plugin.scanForExistingTags();
 						
 						if (existingTags.length > 0) {
 							// Ask user if they want to merge or replace
-							const merge = confirm(`Found ${existingTags.length} tags. Merge with existing tags? (Cancel to replace all tags)`);
+                            const modal = new ConfirmationModal(this.app, `Found ${existingTags.length} tags. Merge with existing tags? (Cancel to replace all tags)`);
+							modal.open();
+                            let merge = false;
+                            merge= await modal.promise;                            
 							
 							if (merge) {
 								// Merge
@@ -1070,7 +1127,7 @@ class QuickTagSettingTab extends PluginSettingTab {
 					}
         }));
         // Reset to defaults
-        new Setting(containerEl)
+        new PluginSettings(containerEl)
             .setName('Reset to defaults')
             .setDesc('Reset all settings and tags to default values')
             .addButton(btn => btn

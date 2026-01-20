@@ -1,14 +1,14 @@
 // settings.ts - UPDATED VERSION
-import { App, PluginSettingTab, Setting } from "obsidian";
-import QuickTagPlugin from "./main";
+import { App, PluginSettingTab, Setting as PluginSettings } from "obsidian";
+import ImageTagPlugin from "./main";
 
-export interface QuickTagSettings {
+export interface ImageTagSettings {
     tags: string[];
     defaultFolder: string;
     autoOpenModal: boolean;
 }
 
-export const DEFAULT_SETTINGS: QuickTagSettings = {
+export const DEFAULT_SETTINGS: ImageTagSettings = {
     tags: [
         'landscape', 'portrait', 'digital-art', 'traditional',
         'character-design', 'concept-art', 'reference', 'texture',
@@ -19,10 +19,10 @@ export const DEFAULT_SETTINGS: QuickTagSettings = {
     autoOpenModal: true
 };
 
-export class QuickTagSettingTab extends PluginSettingTab {
-    plugin: QuickTagPlugin;
+export class ImageTagSettingTab extends PluginSettingTab {
+    plugin: ImageTagPlugin;
 
-    constructor(app: App, plugin: QuickTagPlugin) {
+    constructor(app: App, plugin: ImageTagPlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }
@@ -31,14 +31,14 @@ export class QuickTagSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'QuickTag Settings' });
+        new PluginSettings(containerEl).setName("Image tag settings").setHeading();
 
         // Default folder setting
-        new Setting(containerEl)
+        new PluginSettings(containerEl)
             .setName('Default folder')
             .setDesc('Where to save image reference notes')
             .addText(text => text
-                .setPlaceholder('Image Library')
+                .setPlaceholder('Image library')
                 .setValue(this.plugin.settings.defaultFolder)
                 .onChange(async (value) => {
                     this.plugin.settings.defaultFolder = value;
@@ -46,7 +46,7 @@ export class QuickTagSettingTab extends PluginSettingTab {
                 }));
 
         // Auto-open modal setting
-        new Setting(containerEl)
+        new PluginSettings(containerEl)
             .setName('Auto-open notes')
             .setDesc('Automatically open newly created notes')
             .addToggle(toggle => toggle

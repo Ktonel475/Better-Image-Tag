@@ -1,14 +1,14 @@
 {
-	"name": "obsidian-image-tagger",
+	"name": "better-image-tag",
 	"version": "1.0.0",
-	"description": "Image tagging plugin for Obsidian",
+	"description": "Visual image tagging with sidebar manager. Right-click images or select in-editor to tag with clickable buttons. Stores tags in plugin settings.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
-		"lint": "eslint ."
+		"lint": "eslint  --fix."
 	},
 	"keywords": ["obsidian", "plugin", "images", "tagging"],
 	"license": "0-BSD",
