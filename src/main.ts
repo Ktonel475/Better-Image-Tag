@@ -520,6 +520,17 @@ class TagManagerView {
         
         // Tag name container
         const tagContent = tagItem.createDiv('tag-content');
+
+        const countBadge = tagContent.createEl('span', {
+            text: tagCount.toString(),
+            cls: 'tag-count'
+        });
+        
+        // Tag name
+        const tagName = tagContent.createEl('span', {
+            text: tag,
+            cls: 'tag-name'
+        });
         
         tagContent.addEventListener('click', () => {
             // Copy tag to clipboard for easy use
