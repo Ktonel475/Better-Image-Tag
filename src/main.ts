@@ -7,13 +7,14 @@ class ConfirmationModal extends Modal {
     private resolvePromise: (value: boolean) => void;
     public promise: Promise<boolean>;
 
-    constructor(app: App, message: string) {
+    constructor(app: App, message: string, title: string ) {
         super(app);
-        
+
         this.promise = new Promise((resolve) => {
             this.resolvePromise = resolve;
         });
 
+        this. contentEl.createEl('h2', { text: title });
         this.contentEl.createEl('p', { text: message });
 
         const buttonContainer = this.contentEl.createDiv({ cls: 'modal-button-container' });
@@ -446,7 +447,6 @@ class TagManagerView {
     plugin: ImageTagPlugin;
     containerEl: HTMLElement;
     tagInputEl: HTMLInputElement;
-    app: App;
 
     private sortButtons?: {
         nameBtn: HTMLButtonElement;
@@ -550,14 +550,14 @@ class TagManagerView {
         deleteBtn.addEventListener('click', (e) => {
             // Prevent triggering the copy function
             e.stopPropagation(); 
-
+            const pluginInstance = this.plugin;
             void (async () => {
                 let confirmed = false;
                 if (tagCount > 0) {
                     // Show warning for tags that are in use
                     confirmed = await this.showDeleteWarning(tag, tagCount);
                 } else {
-                    const modal = new ConfirmationModal(this.app, `Delete tag "${tag}"?`);
+                    const modal = new ConfirmationModal(pluginInstance.app, `Delete tag "${tag}"?`, "Warning ");
                     modal.open();
                     confirmed = await modal.promise; 
                 }
@@ -769,12 +769,6 @@ class TagManagerView {
                 sortButton.textContent = 'Sort by relevance';
             }
         });
-    }
-
-    async showConfirmation(message: string): Promise<boolean> {
-        const modal = new ConfirmationModal(this.app, message);
-        modal.open();
-        return await modal.promise; // Just return the modal's promise directly
     }
 
     private async showDeleteWarning(tag: string, usageCount: number): Promise<boolean> {
@@ -1107,7 +1101,7 @@ class ImageTagSettingTab extends PluginSettingTab {
 			.addButton(btn => btn
 				.setButtonText('Scan now')
 				.onClick(async () => {
-                    const modal = new ConfirmationModal(this.app, 'Scan your entire vault for existing tags? This may take a few moments.');
+                    const modal = new ConfirmationModal(this.app, 'This may take a few moments.', 'Scan your entire vault for existing tags? ');
                     modal.open();
 					let confirmed =  false
                     confirmed = await modal.promise;
@@ -1116,7 +1110,7 @@ class ImageTagSettingTab extends PluginSettingTab {
 						
 						if (existingTags.length > 0) {
 							// Ask user if they want to merge or replace
-                            const modal = new ConfirmationModal(this.app, `Found ${existingTags.length} tags. Merge with existing tags? (Cancel to replace all tags)`);
+                            const modal = new ConfirmationModal(this.app, 'Merge with existing tags? (Cancel to replace all tags)', `Found ${existingTags.length} tags. `);
 							modal.open();
                             let merge = false;
                             merge= await modal.promise;                            
