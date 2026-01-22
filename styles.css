@@ -378,3 +378,50 @@
     color: var(--text-on-accent) !important;
     background: rgba(255, 255, 255, 0.2) !important;
 }
+
+
+/* Cancel button */
+.tag-delete-cancel-btn {
+    padding: var(--size-4-1) var(--size-4-4);
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    font-size: var(--font-ui-smaller);
+    transition: all 0.15s ease;
+}
+
+.tag-delete-cancel-btn:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border-hover);
+}
+
+/* Delete button */
+.tag-delete-confirm-btn {
+    padding: var(--size-4-1) var(--size-4-4);
+    background-color: var(--text-error);
+    color: var(--text-on-accent);
+    border: 1px solid var(--text-error);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    font-size: var(--font-ui-smaller);
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.tag-delete-confirm-btn:hover {
+    background-color: var(--color-red); /* Darker red on hover */
+    border-color: var(--color-red);
+    transform: translateY(-1px);
+}
+
+.tag-delete-confirm-btn:active {
+    transform: translateY(0);
+}
+
+.tag-delete-confirm-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}

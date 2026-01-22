@@ -14,7 +14,7 @@ class ConfirmationModal extends Modal {
             this.resolvePromise = resolve;
         });
 
-        this. contentEl.createEl('h2', { text: title });
+        this.titleEl.setText(title);
         this.contentEl.createEl('p', { text: message });
 
         const buttonContainer = this.contentEl.createDiv({ cls: 'modal-button-container' });
@@ -170,7 +170,7 @@ export default class ImageTagPlugin extends Plugin {
     }
 
     async saveSettings() {
-        this.allTags = this.settings.tags; // Update local cache
+        this.allTags = this.settings.tags; 
         await this.saveData(this.settings);
     }
 
@@ -264,10 +264,16 @@ export default class ImageTagPlugin extends Plugin {
 				console.error(`ImageTag: Error reading ${file.path}:`, error);
 			}
 		}
-		
-		const uniqueTags = Array.from(foundTags);
-		console.debug(`ImageTag: Found ${uniqueTags.length} unique tags in vault`);
-		return uniqueTags;
+		const allFoundTags = Array.from(foundTags);
+    
+        // Get current tags from settings
+        const currentTags = this.settings.tags || [];
+        
+        // Compare to find new and existing tags
+        const newTags = allFoundTags.filter(tag => !currentTags.includes(tag));
+
+		console.debug(`ImageTag: Found ${newTags.length} unique tags in vault`);
+		return newTags;
 	}
 	// Helper: Check if file is an image
 	private isImageFile(file: TFile): boolean {
@@ -288,6 +294,56 @@ export default class ImageTagPlugin extends Plugin {
 
     onunload() {
         console.debug('ImageTag plugin unloaded');
+    }
+
+     public async showCriticalWarning(title: string, warnInfo: {txt: string, txt1?: string, txt2?: string}, confirmbtn: string): Promise<boolean> {
+        return new Promise((resolve) => {
+            // Create custom modal for better UX
+            const modal = new Modal(this.app);
+            modal.titleEl.setText(title);
+            
+            const content = modal.contentEl;
+            content.createEl('p', {
+                text: warnInfo.txt,
+                cls: 'tag-delete-warning-text'
+            });
+
+            if (warnInfo.txt1){
+                content.createEl('p', {
+                    text:  warnInfo.txt1,
+                    cls: 'tag-delete-warning-text'
+                });
+            }
+            if (warnInfo.txt2){   
+                content.createEl('p', {
+                    text: warnInfo.txt2,
+                    cls: 'tag-delete-warning-danger'
+                });
+            }
+            
+            // Warning actions
+            const buttonContainer = content.createDiv('modal-button-container');
+            
+            const cancelBtn = buttonContainer.createEl('button', {
+                text: 'Cancel',
+                cls: 'tag-delete-cancel-btn'
+            });
+            cancelBtn.addEventListener('click', () => {
+                modal.close();
+                resolve(false);
+            });
+            
+            const confirmBtn = buttonContainer.createEl('button', {
+                text:  confirmbtn,
+                cls: 'tag-delete-confirm-btn'
+            });
+            confirmBtn.addEventListener('click', () => {
+                modal.close();
+                resolve(true);
+            });
+            
+            modal.open();
+        });
     }
 }
 
@@ -555,7 +611,15 @@ class TagManagerView {
                 let confirmed = false;
                 if (tagCount > 0) {
                     // Show warning for tags that are in use
-                    confirmed = await this.showDeleteWarning(tag, tagCount);
+                    const title = 'Delete tag warning';
+                    const warninfo ={
+                        txt: `This tag is used in ${tagCount} file${tagCount> 1 ? 's' : ''}.`,
+                        txt1: `Deleting "${tag}" will remove it from all files.`,
+                        txt2: "This action cannot be undone."
+                    } 
+                    const confirmbtn = `Delete from ${tagCount} file${tagCount > 1 ? 's' : ''}`
+                    
+                    confirmed = await this.plugin.showCriticalWarning(title, warninfo, confirmbtn);
                 } else {
                     const modal = new ConfirmationModal(pluginInstance.app, `Delete tag "${tag}"?`, "Warning ");
                     modal.open();
@@ -771,52 +835,6 @@ class TagManagerView {
         });
     }
 
-    private async showDeleteWarning(tag: string, usageCount: number): Promise<boolean> {
-        return new Promise((resolve) => {
-            // Create custom modal for better UX
-            const modal = new Modal(this.plugin.app);
-            modal.titleEl.setText('Delete tag warning');
-            
-            const content = modal.contentEl;
-            content.createEl('p', {
-                text: `This tag is used in ${usageCount} file${usageCount > 1 ? 's' : ''}.`,
-                cls: 'tag-delete-warning-text'
-            });
-            
-            content.createEl('p', {
-                text: `Deleting "${tag}" will remove it from all files.`,
-                cls: 'tag-delete-warning-text'
-            });
-            
-            content.createEl('p', {
-                text: 'This action cannot be undone.',
-                cls: 'tag-delete-warning-danger'
-            });
-            
-            // Warning actions
-            const buttonContainer = content.createDiv('tag-delete-warning-buttons');
-            
-            const cancelBtn = buttonContainer.createEl('button', {
-                text: 'Cancel',
-                cls: 'tag-delete-cancel-btn'
-            });
-            cancelBtn.addEventListener('click', () => {
-                modal.close();
-                resolve(false);
-            });
-            
-            const confirmBtn = buttonContainer.createEl('button', {
-                text: `Delete from ${usageCount} file${usageCount > 1 ? 's' : ''}`,
-                cls: 'tag-delete-confirm-btn'
-            });
-            confirmBtn.addEventListener('click', () => {
-                modal.close();
-                resolve(true);
-            });
-            
-            modal.open();
-        });
-    }
 
     private async handleTagDeletion(tag: string): Promise<void> {
         try {
@@ -1075,10 +1093,6 @@ class ImageTagSettingTab extends PluginSettingTab {
 
         // Tag manager section
         new PluginSettings(containerEl).setName("Tag management").setHeading();
-        containerEl.createEl('p', { 
-            text: 'Open the sidebar tag manager to add, remove, or edit tags.',
-            cls: 'setting-description'
-        });
 
         // Open sidebar button
         new PluginSettings(containerEl)
@@ -1139,10 +1153,19 @@ class ImageTagSettingTab extends PluginSettingTab {
                 .setButtonText('Reset')
                 .setWarning()
                 .onClick(async () => {
-                    this.plugin.settings = Object.assign({}, DEFAULT_SETTINGS);
-                    await this.plugin.saveSettings();
-                    this.display(); // Refresh
-                    new Notice('Settings reset to defaults');
+                    const title = "Reset everything to default";
+                    const warninfo = {
+                        txt: 'Are you sure to reset everything?',
+                        txt1: 'This Action will also remove all your saved tag.',
+                        txt2:'Think twice before action!!!'
+                    };
+                    const confirm =  await this.plugin.showCriticalWarning(title, warninfo, " I'm sure about what am I doing")
+                    if (confirm) {
+                        this.plugin.settings = Object.assign({}, DEFAULT_SETTINGS);
+                        await this.plugin.saveSettings();
+                        this.display(); // Refresh
+                        new Notice('Settings reset to defaults');
+                    }
                 }));
     }
 }
