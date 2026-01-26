@@ -196,7 +196,7 @@
 
 /* Tags list */
 .tag-manager-list {
-    max-height: 400px;
+    max-height: 100%;
     overflow-y: auto;
     margin-bottom: 20px;
     padding-right: 5px;
@@ -235,6 +235,10 @@
     font-weight: 500;
     color: var(--text-normal);
     transition: color 0.2s ease;
+}
+
+.tag-hidden {
+    display: none !important;
 }
 
 .tag-manager-item:hover .tag-name {
@@ -319,17 +323,7 @@
     margin-bottom: 10px;
 }
 
-.tag-add-input {
-    flex: 1;
-    padding: 8px 12px;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
-    background: var(--background-primary);
-    color: var(--text-normal);
-    font-size: 14px;
-}
-
-.tag-add-btn {
+.tag-btn {
     padding: 8px 16px;
     background: var(--interactive-accent);
     color: var(--text-on-accent);
@@ -339,9 +333,10 @@
     font-size: 14px;
     font-weight: 500;
     transition: background-color 0.2s ease;
+    box-shadow: none !important;
 }
 
-.tag-add-btn:hover {
+.tag-btn:hover {
     background: var(--interactive-accent-hover);
 }
 

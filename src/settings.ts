@@ -10,10 +10,7 @@ export interface ImageTagSettings {
 
 export const DEFAULT_SETTINGS: ImageTagSettings = {
     tags: [
-        'landscape', 'portrait', 'digital-art', 'traditional',
-        'character-design', 'concept-art', 'reference', 'texture',
-        'environment', 'illustration', 'sketch', 'painting',
-        'photo', 'ui-design', 'icon', 'logo'
+        'Sample Tag A', 'Sample Tag B'      
     ],
     defaultFolder: 'Image Library',
     autoOpenModal: true

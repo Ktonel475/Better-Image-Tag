@@ -1,82 +1,82 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, Setting as PluginSettings, PluginSettingTab, ItemView, WorkspaceLeaf, TFile } from 'obsidian';
-import { ImageTagSettings, DEFAULT_SETTINGS } from 'settings';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, Setting as PluginSettings, PluginSettingTab, ItemView, WorkspaceLeaf, TFile } from 'obsidian'
+import { ImageTagSettings, DEFAULT_SETTINGS } from 'settings'
 
-const VIEW_TYPE_TAG_MANAGER = 'tag-manager-view';
+const VIEW_TYPE_TAG_MANAGER = 'tag-manager-view'
 
 class ConfirmationModal extends Modal {
-    private resolvePromise: (value: boolean) => void;
-    public promise: Promise<boolean>;
+    private resolvePromise: (value: boolean) => void
+    public promise: Promise<boolean>
 
     constructor(app: App, message: string, title: string ) {
-        super(app);
+        super(app)
 
         this.promise = new Promise((resolve) => {
-            this.resolvePromise = resolve;
-        });
+            this.resolvePromise = resolve
+        })
 
-        this.titleEl.setText(title);
-        this.contentEl.createEl('p', { text: message });
+        this.titleEl.setText(title)
+        this.contentEl.createEl('p', { text: message })
 
-        const buttonContainer = this.contentEl.createDiv({ cls: 'modal-button-container' });
+        const btnContainer = this.contentEl.createDiv({ cls: 'modal-button-container' })
 
-        buttonContainer.createEl('button', { text: 'Cancel' })
+        btnContainer.createEl('button', { text: 'Cancel' })
             .addEventListener('click', () => {
-                this.resolvePromise(false);
-                this.close();
-            });
+                this.resolvePromise(false)
+                this.close()
+            })
 
-        const confirmBtn = buttonContainer.createEl('button', { 
+        const confirmBtn = btnContainer.createEl('button', { 
             text: 'Confirm',
             cls: 'mod-cta' // Makes it the primary action button
-        });
+        })
         confirmBtn.addEventListener('click', () => {
-            this.resolvePromise(true);
-            this.close();
-        });
+            this.resolvePromise(true)
+            this.close()
+        })
 
         // Optional: Close on Escape key
         this.scope.register([], 'Escape', () => {
-            this.resolvePromise(false);
-            this.close();
-            return false;
-        });
+            this.resolvePromise(false)
+            this.close()
+            return false
+        })
     }
 
     onOpen() {
-        void super.onOpen();
+        void super.onOpen()
     }
 }
 
 // ==================== MAIN PLUGIN CLASS ====================
 export default class ImageTagPlugin extends Plugin {
-    settings: ImageTagSettings;
-    allTags: string[] = [];
+    settings: ImageTagSettings
+    allTags: string[] = []
 
     async onload() {
-        await this.loadSettings();
-        this.allTags = this.settings.tags;
+        await this.loadSettings()
+        this.allTags = this.settings.tags
 
 		const isFirstInstall = this.settings.tags.length === DEFAULT_SETTINGS.tags.length && 
-                          JSON.stringify(this.settings.tags) === JSON.stringify(DEFAULT_SETTINGS.tags);
+                          JSON.stringify(this.settings.tags) === JSON.stringify(DEFAULT_SETTINGS.tags)
     
 		if (isFirstInstall) {        
             // Show notice of scanning existing tags from vault
-			new Notice('Scanning your vault for existing tags...');
+			new Notice('Scanning your vault for existing tags...')
 			
 			// Scan for existing tags
-			const existingTags = await this.scanForExistingTags();
+			const existingTags = await this.scanForExistingTags()
 			
 			if (existingTags.length > 0) {
                 // Merge with default tags, removing duplicates
-				const mergedTags = [...new Set([...DEFAULT_SETTINGS.tags, ...existingTags])];
-				this.settings.tags = mergedTags.sort();
-				await this.saveSettings();
-				this.allTags = this.settings.tags;
+				const mergedTags = [...new Set([...DEFAULT_SETTINGS.tags, ...existingTags])]
+				this.settings.tags = mergedTags.sort()
+				await this.saveSettings()
+				this.allTags = this.settings.tags
 				
-				new Notice(`ImageTag: Added ${existingTags.length} existing tags from your vault`);
+				new Notice(`ImageTag: Added ${existingTags.length} existing tags from your vault`)
 			}
             //Activate Icon on tab by default
-            await this.activateTagManagerView();
+            await this.activateTagManagerView()
 		}
 		this.registerEvent(
 			this.app.workspace.on('file-menu', (menu, file) => {
@@ -87,47 +87,47 @@ export default class ImageTagPlugin extends Plugin {
 							.setTitle('Image tag')
 							.setIcon('tag')
 							.onClick(async () => {
-								await this.tagImageFile(file);
-							});
-					});
+								await this.tagImageFile(file)
+							})
+					})
 				}
 			})
-		);
+		)
         // Command: Tag selected image
         this.addCommand({
             id: 'tag-selected-image',
             name: 'Tag selected image',
             editorCallback: (editor: Editor, view: MarkdownView) => {
-                const imageName = this.getImageLinkAtCursor(editor);
+                const imageName = this.getImageLinkAtCursor(editor)
                 
                 if (!imageName) {
-                    new Notice('No image found. Place cursor on ![[image.jpg]]');
-                    return;
+                    new Notice('No image found. Place cursor on ![[image.jpg]]')
+                    return
                 }
                 
-                new TagModal(this.app, imageName, this.allTags, this.settings.defaultFolder).open();
+                new TagModal(this.app, imageName, this.allTags, this.settings.defaultFolder).open()
             }
-        });
+        })
 		this.addCommand({
 			id: 'rescan-tags',
 			name: 'Rescan vault for existing tags',
 			callback: async () => {
-				new Notice('Scanning vault for existing tags...');
-				const existingTags = await this.scanForExistingTags();
+				new Notice('Scanning vault for existing tags...')
+				const existingTags = await this.scanForExistingTags()
 				
 				if (existingTags.length > 0) {
 					// Merge with current tags
-					const mergedTags = [...new Set([...this.settings.tags, ...existingTags])];
-					this.settings.tags = mergedTags.sort();
-					await this.saveSettings();
-					this.allTags = this.settings.tags;
+					const mergedTags = [...new Set([...this.settings.tags, ...existingTags])]
+					this.settings.tags = mergedTags.sort()
+					await this.saveSettings()
+					this.allTags = this.settings.tags
 					
-					new Notice(`Added ${existingTags.length} tags. Total: ${this.settings.tags.length} tags`);
+					new Notice(`Added ${existingTags.length} tags. Total: ${this.settings.tags.length} tags`)
 				} else {
-					new Notice('No new tags found in vault');
+					new Notice('No new tags found in vault')
 				}
 			}
-		});
+		})
 
         // Command: Open tag manager sidebar
         this.addCommand({
@@ -135,150 +135,150 @@ export default class ImageTagPlugin extends Plugin {
             name: 'Open tag manager sidebar',
             callback: () => {
                 this.activateTagManagerView().catch(error => {
-                    console.error(error);
-                });
+                    console.error(error)
+                })
             }
-        });
+        })
 
         // Register the sidebar view
         this.registerView(
             VIEW_TYPE_TAG_MANAGER,
             (leaf) => new TagManagerSidebarView(leaf, this)
-        );
+        )
 
         // Add settings tab
-        this.addSettingTab(new ImageTagSettingTab(this.app, this));
+        this.addSettingTab(new ImageTagSettingTab(this.app, this))
 
-        console.debug('ImageTag plugin loaded');
+        console.debug('ImageTag plugin loaded')
     }
 
     // Helper to extract image link
     getImageLinkAtCursor(editor: Editor): string | null {
-        const cursor = editor.getCursor();
-        const line = editor.getLine(cursor.line);
+        const cursor = editor.getCursor()
+        const line = editor.getLine(cursor.line)
         
-        const match = line.match(/!\[\[([^\]]+\.(?:png|jpg|jpeg|gif|webp|bmp|svg))\]\]/i);
+        const match = line.match(/!\[\[([^\]]+\.(?:png|jpg|jpeg|gif|webp|bmp|svg))\]\]/i)
         if (match && match[1]) {
-            return match[1];
+            return match[1]
         }
-        return null;
+        return null
     }
 
     // Settings management
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<ImageTagSettings>);
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<ImageTagSettings>)
     }
 
     async saveSettings() {
-        this.allTags = this.settings.tags; 
-        await this.saveData(this.settings);
+        this.allTags = this.settings.tags 
+        await this.saveData(this.settings)
     }
 
     async addNewTag(tag: string): Promise<boolean> {
-        const cleanTag = tag.trim().toLowerCase();
+        const cleanTag = tag.trim().toLowerCase()
         
-        if (!cleanTag) return false;
-        if (this.settings.tags.includes(cleanTag)) return false;
+        if (!cleanTag) return false
+        if (this.settings.tags.includes(cleanTag)) return false
         
-        this.settings.tags.push(cleanTag);
-        await this.saveSettings();
-        return true;
+        this.settings.tags.push(cleanTag)
+        await this.saveSettings()
+        return true
     }
 
     async removeTag(tag: string): Promise<boolean> {
-        const index = this.settings.tags.indexOf(tag);
+        const index = this.settings.tags.indexOf(tag)
         if (index > -1) {
-            this.settings.tags.splice(index, 1);
-            await this.saveSettings();
-            return true;
+            this.settings.tags.splice(index, 1)
+            await this.saveSettings()
+            return true
         }
-        return false;
+        return false
     }
 
     async activateTagManagerView() {
-        const { workspace } = this.app;
+        const { workspace } = this.app
 
         // Try to find existing tag manager view
-        let leaf: WorkspaceLeaf | undefined = workspace.getLeavesOfType(VIEW_TYPE_TAG_MANAGER)[0];
+        let leaf: WorkspaceLeaf | undefined = workspace.getLeavesOfType(VIEW_TYPE_TAG_MANAGER)[0]
         
         if (!leaf) {
             // Create new leaf in right sidebar
-            const newLeaf = workspace.getLeftLeaf(false);
+            const newLeaf = workspace.getLeftLeaf(false)
             if (newLeaf) {
-                leaf = newLeaf;
+                leaf = newLeaf
                 await leaf.setViewState({
                     type: VIEW_TYPE_TAG_MANAGER,
                     active: true,
-                });
+                })
             } else {
                 // Create new tab if no right sidebar
-                leaf = workspace.getLeaf(true);
+                leaf = workspace.getLeaf(true)
                 await leaf.setViewState({
                     type: VIEW_TYPE_TAG_MANAGER,
                     active: true,
-                });
+                })
             }
         }
         
         // Reveal the leaf if we have one
         if (leaf) {
             workspace.revealLeaf(leaf).catch(error => {
-                console.error(error);
-            });
+                console.error(error)
+            })
         }
     }
 	async scanForExistingTags(): Promise<string[]> {
-		const foundTags = new Set<string>();
-		const files = this.app.vault.getMarkdownFiles();
+		const foundTags = new Set<string>()
+		const files = this.app.vault.getMarkdownFiles()
 		
-		console.debug(`ImageTag: Scanning ${files.length} files for existing tags...`);
+		console.debug(`ImageTag: Scanning ${files.length} files for existing tags...`)
 		
 		for (const file of files) {
 			try {
-				const content = await this.app.vault.read(file);
+				const content = await this.app.vault.read(file)
 				
 				// Find all #tags in the content
-				const tagMatches = content.match(/#([a-zA-Z0-9_-]+)/g);
+				const tagMatches = content.match(/#([a-zA-Z0-9_-]+)/g)
 				if (tagMatches) {
 					tagMatches.forEach(tagMatch => {
 						// Remove the # symbol and clean the tag
-						const cleanTag = tagMatch.substring(1).toLowerCase().trim();
+						const cleanTag = tagMatch.substring(1).toLowerCase().trim()
 						if (cleanTag && cleanTag.length > 1) { // Skip single character tags
-							foundTags.add(cleanTag);
+							foundTags.add(cleanTag)
 						}
-					});
+					})
 				}
 				
 				// Also check frontmatter tags
-				const frontmatterMatch = content.match(/tags:\s*\[([\s\S]*?)\]/);
+				const frontmatterMatch = content.match(/tags:\s*\[([\s\S]*?)\]/)
 				if (frontmatterMatch) {
-					const tagsString = frontmatterMatch?.[1];
-					if (!tagsString) continue;
+					const tagsString = frontmatterMatch?.[1]
+					if (!tagsString) continue
 					const tags = tagsString.split(',').map(tag => 
 						tag.trim().replace(/["']/g, '').toLowerCase()
-					).filter(tag => tag.length > 1);
+					).filter(tag => tag.length > 1)
 					
-					tags.forEach(tag => foundTags.add(tag));
+					tags.forEach(tag => foundTags.add(tag))
 				}
 			} catch (error) {
-				console.error(`ImageTag: Error reading ${file.path}:`, error);
+				console.error(`ImageTag: Error reading ${file.path}:`, error)
 			}
 		}
-		const allFoundTags = Array.from(foundTags);
+		const allFoundTags = Array.from(foundTags)
     
         // Get current tags from settings
-        const currentTags = this.settings.tags || [];
+        const currentTags = this.settings.tags || []
         
         // Compare to find new and existing tags
-        const newTags = allFoundTags.filter(tag => !currentTags.includes(tag));
+        const newTags = allFoundTags.filter(tag => !currentTags.includes(tag))
 
-		console.debug(`ImageTag: Found ${newTags.length} unique tags in vault`);
-		return newTags;
+		console.debug(`ImageTag: Found ${newTags.length} unique tags in vault`)
+		return newTags
 	}
 	// Helper: Check if file is an image
 	private isImageFile(file: TFile): boolean {
-		const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'];
-		return imageExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+		const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg']
+		return imageExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
 	}
 
 	// Helper: Tag image file from context menu
@@ -289,151 +289,212 @@ export default class ImageTagPlugin extends Plugin {
 			file.name, 
 			this.allTags, 
 			this.settings.defaultFolder
-		).open();
+		).open()
 	}
 
     onunload() {
-        console.debug('ImageTag plugin unloaded');
+        console.debug('ImageTag plugin unloaded')
     }
 
      public async showCriticalWarning(title: string, warnInfo: {txt: string, txt1?: string, txt2?: string}, confirmbtn: string): Promise<boolean> {
         return new Promise((resolve) => {
             // Create custom modal for better UX
-            const modal = new Modal(this.app);
-            modal.titleEl.setText(title);
+            const modal = new Modal(this.app)
+            modal.titleEl.setText(title)
             
-            const content = modal.contentEl;
+            const content = modal.contentEl
             content.createEl('p', {
                 text: warnInfo.txt,
                 cls: 'tag-delete-warning-text'
-            });
+            })
 
             if (warnInfo.txt1){
                 content.createEl('p', {
                     text:  warnInfo.txt1,
                     cls: 'tag-delete-warning-text'
-                });
+                })
             }
             if (warnInfo.txt2){   
                 content.createEl('p', {
                     text: warnInfo.txt2,
                     cls: 'tag-delete-warning-danger'
-                });
+                })
             }
             
             // Warning actions
-            const buttonContainer = content.createDiv('modal-button-container');
+            const btnContainer = content.createDiv('modal-button-container')
             
-            const cancelBtn = buttonContainer.createEl('button', {
+            const cancelBtn = btnContainer.createEl('button', {
                 text: 'Cancel',
                 cls: 'tag-delete-cancel-btn'
-            });
+            })
             cancelBtn.addEventListener('click', () => {
-                modal.close();
-                resolve(false);
-            });
+                modal.close()
+                resolve(false)
+            })
             
-            const confirmBtn = buttonContainer.createEl('button', {
+            const confirmBtn = btnContainer.createEl('button', {
                 text:  confirmbtn,
                 cls: 'tag-delete-confirm-btn'
-            });
+            })
             confirmBtn.addEventListener('click', () => {
-                modal.close();
-                resolve(true);
-            });
+                modal.close()
+                resolve(true)
+            })
             
-            modal.open();
-        });
+            modal.open()
+        })
     }
 }
 
-// ==================== TAG SELECTION MODAL ====================
-class TagModal extends Modal {
-    selectedTags: Set<string> = new Set();
-    allTags: string[];
-    imageName: string;
-    defaultFolder: string;
-    author: string = '';
-    noteContent: string = '';
+//====================TagAdding Modal===================
+class TagAddingModal extends Modal {
+    plugin: ImageTagPlugin
+    tab: TagManagerView
+    tagName: string  = ''
 
-    constructor(app: App, imageName: string, allTags: string[], defaultFolder: string) {
-        super(app);
-        this.imageName = imageName;
-        this.allTags = allTags;
-        this.defaultFolder = defaultFolder;
+    constructor(app: App){
+        super(app)
     }
 
     onOpen() {
-        const {contentEl} = this;
-        contentEl.empty();
+        this.titleEl.setText ('Add New Tag')
         
-        // Header
-        const fileName = this.imageName.split('/').pop() || this.imageName;
-        contentEl.createEl('h2', { text: `Tag: ${fileName}` });
+        // Author input
+        new PluginSettings(this.contentEl)
+            .setName('Tag Name')
+            .addText(text => text
+                .setPlaceholder('E.g. , landscape, character')
+                .setValue(this.tagName)
+                .onChange(value => this.tagName= value))
+        // Action buttons
+        const btnContainer = this.contentEl.createDiv('ImageTag-btn-container')
+        
+        new PluginSettings(btnContainer)
+            .addButton(btn => btn
+                .setButtonText('Cancel')
+                .onClick(() => this.close()))
+            .addButton(btn => btn
+                .setButtonText('Add Tag')
+                .setCta()
+                .onClick(()=>this.addTag()))
+
+    }
+            
+    async addTag() {
+        if (!this.tagName) {
+            new Notice('Please enter a tag name')
+            return
+        }
+        
+        const success = await this.plugin.addNewTag(this.tagName)
+        if (success) {
+            // Add to the list
+            const tagsList = this.containerEl.querySelector('#tag-manager-list')
+            if (tagsList) {
+                this.tab.createTagItem(this.tagName, 0, tagsList as HTMLElement)
+            }
+            
+            this.tab.tagInputEl.value = ''
+            this.tab.updateStats()
+            new Notice(`Added tag: ${this.tagName}`)
+        } else {
+            new Notice('Tag already exists')
+        }
+        this.close()
+    }
+    
+
+    onClose() {
+        const {contentEl} = this
+        contentEl.empty()
+    }
+}
+
+
+// ==================== TAG SELECTION MODAL ====================
+class TagModal extends Modal {
+    selectedTags: Set<string> = new Set()
+    allTags: string[]
+    imageName: string
+    defaultFolder: string
+    author: string = ''
+    noteContent: string = ''
+
+    constructor(app: App, imageName: string, allTags: string[], defaultFolder: string) {
+        super(app)
+        this.imageName = imageName
+        this.allTags = allTags
+        this.defaultFolder = defaultFolder
+    }
+
+    onOpen() {
+        const fileName = this.imageName.split('/').pop() || this.imageName
+        this.titleEl.setText(`Tag: ${fileName}`)
         
         // Tag selection area
-        contentEl.createEl('p', { 
+        this.contentEl.createEl('p', { 
             text: 'Click tags to select (selected tags will be highlighted):',
             cls: 'tag-instruction'
-        });
+        })
         
-        const tagsContainer = contentEl.createDiv('ImageTag-tags-container');
+        const tagsContainer = this.contentEl.createDiv('ImageTag-tags-container')
         
         // Display all tags as clickable buttons
         this.allTags.forEach(tag => {
             const btn = tagsContainer.createEl('button', {
                 text: tag,
                 cls: 'ImageTag-tag-btn'
-            });
+            })
             
             if (this.selectedTags.has(tag)) {
-                btn.addClass('ImageTag-tag-selected');
+                btn.addClass('ImageTag-tag-selected')
             }
             
             btn.addEventListener('click', () => {
                 if (this.selectedTags.has(tag)) {
-                    this.selectedTags.delete(tag);
-                    btn.removeClass('ImageTag-tag-selected');
+                    this.selectedTags.delete(tag)
+                    btn.removeClass('ImageTag-tag-selected')
                 } else {
-                    this.selectedTags.add(tag);
-                    btn.addClass('ImageTag-tag-selected');
+                    this.selectedTags.add(tag)
+                    btn.addClass('ImageTag-tag-selected')
                 }
-            });
-        });
+            })
+        })
 
         // Author input
-        new PluginSettings(contentEl)
+        new PluginSettings(this.contentEl)
             .setName('Author (optional)')
             .setDesc('Who created this image?')
             .addText(text => text
                 .setPlaceholder('E.g. ,author name, studio name')
                 .setValue(this.author)
-                .onChange(value => this.author = value));
+                .onChange(value => this.author = value))
 
         // Note content
-        new PluginSettings(contentEl)
+        new PluginSettings(this.contentEl)
             .setName('Notes (optional)')
             .setDesc('Add any observations or thoughts')
             .addTextArea(text => text
                 .setPlaceholder('What do you like about this image? How might you use it?')
                 .setValue(this.noteContent)
-                .onChange(value => this.noteContent = value));
+                .onChange(value => this.noteContent = value))
 
-        // Action buttons
-        const buttonContainer = contentEl.createDiv('ImageTag-button-container');
+        // Action btns
+        const btnContainer = this.contentEl.createDiv('ImageTag-btn-container')
         
-        new PluginSettings(buttonContainer)
+        new PluginSettings(btnContainer)
             .addButton(btn => btn
                 .setButtonText('Create note')
                 .setCta()
                 .onClick(() => this.createNote()))
             .addButton(btn => btn
                 .setButtonText('Cancel')
-                .onClick(() => this.close()));
+                .onClick(() => this.close()))
     }
 
     async createNote() {
-        const tagsArray = Array.from(this.selectedTags);
+        const tagsArray = Array.from(this.selectedTags)
         
         // Create frontmatter
         const frontmatter = `---
@@ -441,177 +502,182 @@ image: "${this.imageName}"
 author: "${this.author}"
 tags: [${tagsArray.map(t => `"${t}"`).join(', ')}]
 created: "${new Date().toISOString().split('T')[0]}"
----`;
+---`
 
         // Create note body
         const body = `![[${this.imageName}|600]]
 
-${this.noteContent ? `## Notes\n\n${this.noteContent}` : ''}`;
+${this.noteContent ? `## Notes\n\n${this.noteContent}` : ''}`
 
-        const fullContent = `${frontmatter}\n\n${body}`;
+        const fullContent = `${frontmatter}\n\n${body}`
 
         // Determine folder path
-        const folderPath = this.defaultFolder;
-        const safeImageName = this.imageName.replace(/[<>:"/\\|?*]/g, '_');
-        const baseName = safeImageName.replace(/\.[^/.]+$/, '');
-        const fileName = `${baseName}.md`;
-        const fullPath = folderPath ? `${folderPath}/${fileName}` : fileName;
+        const folderPath = this.defaultFolder
+        const safeImageName = this.imageName.replace(/[<>:"/\\|?*]/g, '_')
+        const baseName = safeImageName.replace(/\.[^/.]+$/, '')
+        const fileName = `${baseName}.md`
+        const fullPath = folderPath ? `${folderPath}/${fileName}` : fileName
 
         try {
             // Ensure folder exists
             if (folderPath) {
                 // @ts-ignore - internal API
-                const folderExists = await this.app.vault.adapter.exists(folderPath);
+                const folderExists = await this.app.vault.adapter.exists(folderPath)
                 if (!folderExists) {
                     // @ts-ignore
-                    await this.app.vault.adapter.mkdir(folderPath);
+                    await this.app.vault.adapter.mkdir(folderPath)
                 }
             }
 
             // Create the note
-            await this.app.vault.create(fullPath, fullContent);
+            await this.app.vault.create(fullPath, fullContent)
             
             // Open the note if setting is enabled
             //@ts-ignore
              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             if (this.app.plugins.plugins?.ImageTag?.settings?.autoOpenModal) {
-                const leaf = this.app.workspace.getLeaf();
-                const file = this.app.vault.getAbstractFileByPath(fullPath);
+                const leaf = this.app.workspace.getLeaf()
+                const file = this.app.vault.getAbstractFileByPath(fullPath)
                 if (file) {
                     // @ts-ignore
-                    await leaf.openFile(file);
+                    await leaf.openFile(file)
                 }
             }
             
-            new Notice(`Created: ${fileName}`);
+            new Notice(`Created: ${fileName}`)
         } catch (error) {
-            console.error('Error creating note:', error);
-            new Notice('Failed to create note');
+            console.error('Error creating note:', error)
+            new Notice('Failed to create note')
         }
 
-        this.close();
+        this.close()
     }
 
     onClose() {
-        const {contentEl} = this;
-        contentEl.empty();
+        const {contentEl} = this
+        contentEl.empty()
     }
 }
 
 // ==================== SIDEBAR TAG MANAGER ====================
 class TagManagerView {
-    plugin: ImageTagPlugin;
-    containerEl: HTMLElement;
-    tagInputEl: HTMLInputElement;
+    plugin: ImageTagPlugin
+    handle: TagAddingModal
+    containerEl: HTMLElement
+    tagInputEl: HTMLInputElement
 
     private sortButtons?: {
-        nameBtn: HTMLButtonElement;
-        countBtn: HTMLButtonElement;
-    };
+        nameBtn: HTMLButtonElement
+        countBtn: HTMLButtonElement
+    }
 
     constructor(plugin: ImageTagPlugin, containerEl: HTMLElement) {
-        this.plugin = plugin;
-        this.containerEl = containerEl;
-        this.render();
+        this.plugin = plugin
+        this.containerEl = containerEl
+
+        this.handle = new TagAddingModal(this.plugin.app)
+        this.handle.plugin = this.plugin
+        this.handle.tab = this
+
+        this.render()
     }
 
     render() {
-        this.containerEl.empty();
+        this.containerEl.empty()
         
         // Header
-        this.containerEl.createEl('h3', { text: 'Tag manager' });
+        this.containerEl.createEl('h3', { text: 'Tag manager' })
         
         // Stats
-        const tagCount = this.plugin.settings.tags.length;
+        const tagCount = this.plugin.settings.tags.length
         this.containerEl.createEl('p', {
             text: `${tagCount} tags in your collection`,
             cls: 'tag-manager-stats'
-        });
+        })
 
         // Render element
-        this.renderSearchAndSort();
-        this.renderTagsList();
-        this.renderAddTagSection();        
+        this.renderSearchAndSort()
+        this.renderTagsList()  
     }
 
     renderTagsList() {
-        const tagsContainer = this.containerEl.createDiv('tag-manager-list');
-        tagsContainer.id = 'tag-manager-list';
+        const tagsContainer = this.containerEl.createDiv('tag-manager-list')
+        tagsContainer.id = 'tag-manager-list'
         
         // Get all files and their metadata
-        const files = this.plugin.app.vault.getMarkdownFiles();
-        const tagCounts: Record<string, number> = {};
+        const files = this.plugin.app.vault.getMarkdownFiles()
+        const tagCounts: Record<string, number> = {}
         
         files.forEach(file => {
-            const cache = this.plugin.app.metadataCache.getFileCache(file);
+            const cache = this.plugin.app.metadataCache.getFileCache(file)
             if (cache?.tags) {
                 cache.tags.forEach(tagInfo => {
-                    const tag = tagInfo.tag.substring(1); // Remove the # prefix
-                    tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-                });
+                    const tag = tagInfo.tag.substring(1) // Remove the # prefix
+                    tagCounts[tag] = (tagCounts[tag] || 0) + 1
+                })
             }
             
             // Also check frontmatter tags
             if (cache?.frontmatter?.tags) {
                 const tags = Array.isArray(cache.frontmatter.tags) 
                     ? cache.frontmatter.tags 
-                    : [cache.frontmatter.tags];
+                    : [cache.frontmatter.tags]
                 
                 tags.forEach(tag => {
-                    const cleanTag = typeof tag === 'string' ? tag : String(tag);
-                    tagCounts[cleanTag] = (tagCounts[cleanTag] || 0) + 1;
-                });
+                    const cleanTag = typeof tag === 'string' ? tag : String(tag)
+                    tagCounts[cleanTag] = (tagCounts[cleanTag] || 0) + 1
+                })
             }
-        });
+        })
         
         // Display tags from settings with their counts
         this.plugin.settings.tags.forEach(tag => {
-            const count = tagCounts[tag] || 0;
-            this.createTagItem(tag, count, tagsContainer);
-        });
+            const count = tagCounts[tag] || 0
+            this.createTagItem(tag, count, tagsContainer)
+        })
     }
 
     createTagItem(tag: string, tagCount: number, container: HTMLElement) {
-        const tagItem = container.createDiv('tag-manager-item');
+        const tagItem = container.createDiv('tag-manager-item')
         
         // Tag name container
-        const tagContent = tagItem.createDiv('tag-content');
+        const tagContent = tagItem.createDiv('tag-content')
 
         const countBadge = tagContent.createEl('span', {
             text: tagCount.toString(),
             cls: 'tag-count'
-        });
+        })
         
         // Tag name
         const tagName = tagContent.createEl('span', {
             text: tag,
             cls: 'tag-name'
-        });
+        })
         
         tagContent.addEventListener('click', () => {
             // Copy tag to clipboard for easy use
             navigator.clipboard.writeText(tag).catch(error => {
-                console.error(error);
-            });
-            new Notice(`Copied: ${tag}`);
-        });
+                console.error(error)
+            })
+            new Notice(`Copied: ${tag}`)
+        })
 
         // Delete button
         const deleteBtn = tagItem.createEl('button', {
             text: '×',
             cls: 'tag-delete-btn',
             title: 'Delete tag'
-        });
+        })
 
         deleteBtn.addEventListener('click', (e) => {
             // Prevent triggering the copy function
-            e.stopPropagation(); 
-            const pluginInstance = this.plugin;
+            e.stopPropagation() 
+            const pluginInstance = this.plugin
             void (async () => {
-                let confirmed = false;
+                let confirmed = false
                 if (tagCount > 0) {
                     // Show warning for tags that are in use
-                    const title = 'Delete tag warning';
+                    const title = 'Delete tag warning'
                     const warninfo ={
                         txt: `This tag is used in ${tagCount} file${tagCount> 1 ? 's' : ''}.`,
                         txt1: `Deleting "${tag}" will remove it from all files.`,
@@ -619,454 +685,414 @@ class TagManagerView {
                     } 
                     const confirmbtn = `Delete from ${tagCount} file${tagCount > 1 ? 's' : ''}`
                     
-                    confirmed = await this.plugin.showCriticalWarning(title, warninfo, confirmbtn);
+                    confirmed = await this.plugin.showCriticalWarning(title, warninfo, confirmbtn)
                 } else {
-                    const modal = new ConfirmationModal(pluginInstance.app, `Delete tag "${tag}"?`, "Warning ");
-                    modal.open();
-                    confirmed = await modal.promise; 
+                    const modal = new ConfirmationModal(pluginInstance.app, `Delete tag "${tag}"?`, "Warning ")
+                    modal.open()
+                    confirmed = await modal.promise 
                 }
                 if (confirmed) {
-                    await this.handleTagDeletion(tag);
-                    new Notice(`Deleted tag "${tag}"`);
+                    await this.handleTagDeletion(tag)
                 }
             })().catch(error => {
-                console.error("Failed to delete tag", error);
-                new Notice('Failed to delete tag');
-            });
-        });
+                console.error("Failed to delete tag", error)
+                new Notice('Failed to delete tag')
+            })
+        })
         
-        return tagItem;
-    }
-
-    renderAddTagSection() {
-        const addSection = this.containerEl.createDiv('tag-add-section');
-        
-        const inputRow = addSection.createDiv('tag-input-row');
-        this.tagInputEl = inputRow.createEl('input', {
-            type: 'text',
-            placeholder: 'New tag name...',
-            cls: 'tag-add-input'
-        });
-        
-        const addBtn = inputRow.createEl('button', {
-            text: 'Add',
-            cls: 'tag-add-btn'
-        });
-        
-        addBtn.addEventListener('click', () => 
-            void this.addNewTag()
-                .catch(error => {
-                    console.error("Fail to add new tag: ", error);
-                }));
-        
-        this.tagInputEl.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                void this.addNewTag();
-            }
-        });
+        return tagItem
     }
     async DeleteTag(tag: string) {
-        const tagsList = this.containerEl.querySelector('#tag-manager-list');
-        if (!tagsList) return;
+        const tagsList = this.containerEl.querySelector('#tag-manager-list')
+        if (!tagsList) return
 
-        const tagItems = tagsList.querySelectorAll('.tag-manager-item');
+        const tagItems = tagsList.querySelectorAll('.tag-manager-item')
         tagItems.forEach (item =>{
-            const tagName = item.querySelector('.tag-name')?.textContent;
+            const tagName = item.querySelector('.tag-name')?.textContent
             if (tagName === tag) {
-                item.remove();
+                item.remove()
             }
         })
 
-        this.updateStats();
+        this.updateStats()
     }
 
-    async addNewTag() {
-        const newTag = this.tagInputEl.value.trim().toLowerCase();
+   filterTags(searchTerm: string) {
+    const tagsList = this.containerEl.querySelector('#tag-manager-list')
+    if (!tagsList) return
+    
+    const tagItems = tagsList.querySelectorAll('.tag-manager-item')
+    const searchLower = searchTerm.toLowerCase()
+    
+    tagItems.forEach(item => {
+        const tagName = item.querySelector('.tag-name')?.textContent?.toLowerCase() || ''
+        const isVisible = tagName.includes(searchLower);
         
-        if (!newTag) {
-            new Notice('Please enter a tag name');
-            return;
-        }
-        
-        const success = await this.plugin.addNewTag(newTag);
-        if (success) {
-            // Add to the list
-            const tagsList = this.containerEl.querySelector('#tag-manager-list');
-            if (tagsList) {
-                this.createTagItem(newTag, 0, tagsList as HTMLElement);
-            }
-            
-            this.tagInputEl.value = '';
-            this.updateStats();
-            new Notice(`Added tag: ${newTag}`);
+        if (isVisible) {
+            item.classList.remove('tag-hidden')
         } else {
-            new Notice('Tag already exists');
+            item.classList.add('tag-hidden')
         }
-    }
-
-    filterTags(searchTerm: string) {
-        const tagsList = this.containerEl.querySelector('#tag-manager-list');
-        if (!tagsList) return;
-        
-        const tagItems = tagsList.querySelectorAll('.tag-manager-item');
-        const searchLower = searchTerm.toLowerCase();
-        
-        tagItems.forEach(item => {
-            const tagName = item.querySelector('.tag-name')?.textContent?.toLowerCase() || '';
-            const isVisible = tagName.includes(searchLower);
-            (item as HTMLElement).style.display = isVisible ? 'flex' : 'none';
-        });
-    }
+    })
+}
 
     updateStats() {
-        const stats = this.containerEl.querySelector('.tag-manager-stats');
+        const stats = this.containerEl.querySelector('.tag-manager-stats')
         if (stats) {
-            stats.textContent = `${this.plugin.settings.tags.length} tags in your collection`;
+            stats.textContent = `${this.plugin.settings.tags.length} tags in your collection`
         }
     }
 
     sortTags(sortBy: 'name' | 'count' | 'relevance', searchTerm?: string) {
-        const tagsList = this.containerEl.querySelector('#tag-manager-list');
-        if (!tagsList) return;
+        const tagsList = this.containerEl.querySelector('#tag-manager-list')
+        if (!tagsList) return
         
-        const tagItems = Array.from(tagsList.querySelectorAll('.tag-manager-item'));
+        const tagItems = Array.from(tagsList.querySelectorAll('.tag-manager-item'))
         
         switch (sortBy) {
             case 'name':
-                this.sortByName(tagItems);
-                break;
+                this.sortByName(tagItems)
+                break
             case 'count':
-                this.sortByCount(tagItems);
-                break;
+                this.sortByCount(tagItems)
+                break
             case 'relevance':
                 if (searchTerm) {
-                    this.sortByRelevance(searchTerm, tagItems);
+                    this.sortByRelevance(searchTerm, tagItems)
                 } else {
-                    this.sortByName(tagItems);
+                    this.sortByName(tagItems)
                 }
-                break;
+                break
         }
         
         // Reattach in sorted order
-        this.reorderTagItems(tagItems);
+        this.reorderTagItems(tagItems)
     }
 
     renderSearchAndSort() {
-        const searchSortContainer = this.containerEl.createDiv('tag-search-sort-container');
+        const controlContainer = this.containerEl.createDiv('tag-search-sort-container')
         
         // Search input
-        const searchInput = searchSortContainer.createEl('input', {
+        const searchInput = controlContainer.createEl('input', {
             type: 'text',
             placeholder: 'Search tags...',
             cls: 'tag-search-input'
-        });
+        })
         
         // Sort button (triggers dropdown)
-        const sortButton = searchSortContainer.createEl('button', {
+        const sortbtn = controlContainer.createEl('button', {
             text: 'Sort by count',
-            cls: 'tag-sort-btn'
-        });
+            cls: 'tag-btn'
+        })
         
         // Floating dropdown overlay
-        const dropdown = searchSortContainer.createDiv('tag-sort-dropdown');
+        const dropdown = controlContainer.createDiv('tag-sort-dropdown')
         
         const sortOptions = [
             { id: 'count', text: 'Count', icon: '↓', label: 'Sort by Count' },
             { id: 'name', text: 'Name A-Z', icon: 'A-Z', label: 'Sort by Name A-Z' },
             { id: 'relevance', text: 'Relevance', icon: '★', label: 'Sort by Relevance' }
-        ];
+        ]
         
         sortOptions.forEach(option => {
-            const item = dropdown.createDiv('tag-sort-item');
-            item.setAttribute('data-sort', option.id);
+            const item = dropdown.createDiv('tag-sort-item')
+            item.setAttribute('data-sort', option.id)
             
             item.createEl('span', { 
                 text: option.icon, 
                 cls: 'sort-icon' 
-            });
+            })
             item.createEl('span', { 
                 text: option.text, 
                 cls: 'sort-text' 
-            });
+            })
             
             item.addEventListener('click', () => {
-                const searchTerm = searchInput.value.trim();
+                const searchTerm = searchInput.value.trim()
                 
                 // Update button text
-                sortButton.textContent = option.label;
+                sortbtn.textContent = option.label
                 
                 // Perform sort
                 if (option.id === 'relevance' && !searchTerm) {
-                    this.sortTags('count');
-                    sortButton.textContent = 'Sort by count';
+                    this.sortTags('count')
+                    sortbtn.textContent = 'Sort by count'
                 } else if (option.id === 'relevance') {
-                    this.sortTags('relevance', searchTerm);
+                    this.sortTags('relevance', searchTerm)
                 } else {
-                    this.sortTags(option.id as 'name' | 'count');
+                    this.sortTags(option.id as 'name' | 'count')
                 }
                 
                 // Close dropdown
-                dropdown.classList.remove('active');
-            });
-        });
-        
+                dropdown.classList.remove('active')
+            })
+        })
+
         // Toggle dropdown
-        sortButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dropdown.classList.toggle('active');
-        });
+        sortbtn.addEventListener('click', (e) => {
+            e.stopPropagation()
+            dropdown.classList.toggle('active')
+        })
         
+        const addbtn = controlContainer.createEl('button', {
+            text: '+',
+            cls: 'tag-btn'
+        })
+
+        addbtn.addEventListener('click', (e) => {
+            this.handle.open()
+        })
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (!searchSortContainer.contains(e.target as Node)) {
-                dropdown.classList.remove('active');
+            if (!controlContainer.contains(e.target as Node)) {
+                dropdown.classList.remove('active')
             }
-        });
+        })
         
         // Search functionality
         searchInput.addEventListener('input', () => {
-            const searchTerm = searchInput.value.trim();
-            this.filterTags(searchTerm);
+            const searchTerm = searchInput.value.trim()
+            this.filterTags(searchTerm)
             
             if (searchTerm) {
-                this.sortTags('relevance', searchTerm);
-                sortButton.textContent = 'Sort by relevance';
+                this.sortTags('relevance', searchTerm)
+                sortbtn.textContent = 'Sort by relevance'
             }
-        });
+        })
     }
 
 
     private async handleTagDeletion(tag: string): Promise<void> {
         try {
             // Remove tag from plugin settings
-            const removed = await this.plugin.removeTag(tag);
+            const removed = await this.plugin.removeTag(tag)
             
             if (removed) {
                 // Remove tag from all markdown files
                 await this.removeTagFromAllFiles(tag).catch(error => {
                     console.error("Tag Removal Error", error)
-                });
+                })
                 
                await this.DeleteTag(tag).catch(error => {
-                    console.error("Tag Deletion Error:", error);
-               });
+                    console.error("Tag Deletion Error:", error)
+               })
                 
                 // Update stats
-                this.updateStats();
+                this.updateStats()
                 
-                new Notice(`Deleted tag "${tag}" from all files`);
+                new Notice(`Deleted tag "${tag}" from all files`)
             }
         } catch (error) {
-            console.error('Error deleting tag:', error);
-            new Notice(`Failed to delete tag "${tag}"`);
+            console.error('Error deleting tag:', error)
+            new Notice(`Failed to delete tag "${tag}"`)
         }
     }
 
     private async removeTagFromAllFiles(tag: string): Promise<void> {
-        const files = this.plugin.app.vault.getMarkdownFiles();
-        let updatedFiles = 0;
+        const files = this.plugin.app.vault.getMarkdownFiles()
+        let updatedFiles = 0
         
         for (const file of files) {
             try {
-                let content = await this.plugin.app.vault.read(file);
-                let modified = false;
+                let content = await this.plugin.app.vault.read(file)
+                let modified = false
                 
                 // Remove inline #tag references
-                const regex = new RegExp(`#${tag}\\b`, 'g');
-                const newContent = content.replace(regex, '');
+                const regex = new RegExp(`#${tag}\\b`, 'g')
+                const newContent = content.replace(regex, '')
                 if (newContent !== content) {
-                    content = newContent;
-                    modified = true;
+                    content = newContent
+                    modified = true
                 }
                 
                 // Remove from frontmatter tags array
-                const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+                const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/)
                 if (frontmatterMatch?.[1]) {
-                    const frontmatter = frontmatterMatch[1];
-                    const lines = frontmatter.split('\n');
-                    const newLines = [];
+                    const frontmatter = frontmatterMatch[1]
+                    const lines = frontmatter.split('\n')
+                    const newLines = []
                     
                     for (const line of lines) {
                         if (line.startsWith('tags:')) {
                             // Parse tags array
-                            const tagsMatch = line.match(/tags:\s*\[(.*)\]/);
+                            const tagsMatch = line.match(/tags:\s*\[(.*)\]/)
                             if (tagsMatch) {
-                                const tagsStr = tagsMatch[1];
-                                if (!tagsStr) continue;
+                                const tagsStr = tagsMatch[1]
+                                if (!tagsStr) continue
                                 const tagsArray = tagsStr.split(',')
                                     .map(t => t.trim().replace(/["']/g, ''))
-                                    .filter(t => t !== tag);
+                                    .filter(t => t !== tag)
                                 
                                 if (tagsArray.length > 0) {
-                                    const newTags = tagsArray.map(t => `"${t}"`).join(', ');
-                                    newLines.push(`tags: [${newTags}]`);
+                                    const newTags = tagsArray.map(t => `"${t}"`).join(', ')
+                                    newLines.push(`tags: [${newTags}]`)
                                 } else {
-                                    newLines.push('tags: []');
+                                    newLines.push('tags: []')
                                 }
-                                modified = true;
+                                modified = true
                             } else {
-                                newLines.push(line);
+                                newLines.push(line)
                             }
                         } else {
-                            newLines.push(line);
+                            newLines.push(line)
                         }
                     }
                     
                     if (modified) {
-                        const newFrontmatter = newLines.join('\n');
-                        content = content.replace(frontmatterMatch[0], `---\n${newFrontmatter}\n---`);
+                        const newFrontmatter = newLines.join('\n')
+                        content = content.replace(frontmatterMatch[0], `---\n${newFrontmatter}\n---`)
                     }
                 }
                 
                 if (modified) {
-                    await this.plugin.app.vault.modify(file, content);
-                    updatedFiles++;
+                    await this.plugin.app.vault.modify(file, content)
+                    updatedFiles++
                 }
                 
             } catch (error) {
-                console.error(`Error updating file ${file.path}:`, error);
+                console.error(`Error updating file ${file.path}:`, error)
             }
         }
         
-        console.debug(`Removed tag "${tag}" from ${updatedFiles} files`);
+        console.debug(`Removed tag "${tag}" from ${updatedFiles} files`)
     }
 
     // Sort alphabetically (A-Z)
     private sortByName(tagItems: Element[]) {
         tagItems.sort((a, b) => {
-            const aName = a.querySelector('.tag-name')?.textContent || '';
-            const bName = b.querySelector('.tag-name')?.textContent || '';
-            return aName.localeCompare(bName, undefined, { numeric: true });
-        });
+            const aName = a.querySelector('.tag-name')?.textContent || ''
+            const bName = b.querySelector('.tag-name')?.textContent || ''
+            return aName.localeCompare(bName, undefined, { numeric: true })
+        })
     }
 
     // Sort by count (descending), then alphabetically
     private sortByCount(tagItems: Element[]) {
         tagItems.sort((a, b) => {
-            const aCountText = a.querySelector('.tag-count')?.textContent || '0';
-            const bCountText = b.querySelector('.tag-count')?.textContent || '0';
-            const aCount = parseInt(aCountText);
-            const bCount = parseInt(bCountText);
+            const aCountText = a.querySelector('.tag-count')?.textContent || '0'
+            const bCountText = b.querySelector('.tag-count')?.textContent || '0'
+            const aCount = parseInt(aCountText)
+            const bCount = parseInt(bCountText)
             
-            if (bCount !== aCount) return bCount - aCount;
+            if (bCount !== aCount) return bCount - aCount
             
-            const aName = a.querySelector('.tag-name')?.textContent || '';
-            const bName = b.querySelector('.tag-name')?.textContent || '';
-            return aName.localeCompare(bName);
-        });
+            const aName = a.querySelector('.tag-name')?.textContent || ''
+            const bName = b.querySelector('.tag-name')?.textContent || ''
+            return aName.localeCompare(bName)
+        })
     }
 
     // Sort by relevance to search term
     private sortByRelevance(searchTerm: string, tagItems: Element[]) {
-        const searchLower = searchTerm.toLowerCase();
+        const searchLower = searchTerm.toLowerCase()
         
         tagItems.sort((a, b) => {
-            const aName = a.querySelector('.tag-name')?.textContent?.toLowerCase() || '';
-            const bName = b.querySelector('.tag-name')?.textContent?.toLowerCase() || '';
-            const aCountText = a.querySelector('.tag-count')?.textContent || '0';
-            const bCountText = b.querySelector('.tag-count')?.textContent || '0';
-            const aCount = parseInt(aCountText);
-            const bCount = parseInt(bCountText);
+            const aName = a.querySelector('.tag-name')?.textContent?.toLowerCase() || ''
+            const bName = b.querySelector('.tag-name')?.textContent?.toLowerCase() || ''
+            const aCountText = a.querySelector('.tag-count')?.textContent || '0'
+            const bCountText = b.querySelector('.tag-count')?.textContent || '0'
+            const aCount = parseInt(aCountText)
+            const bCount = parseInt(bCountText)
             
             // Calculate relevance scores
-            const aScore = this.calculateRelevanceScore(aName, searchLower, aCount);
-            const bScore = this.calculateRelevanceScore(bName, searchLower, bCount);
+            const aScore = this.calculateRelevanceScore(aName, searchLower, aCount)
+            const bScore = this.calculateRelevanceScore(bName, searchLower, bCount)
             
-            if (bScore !== aScore) return bScore - aScore;
-            if (bCount !== aCount) return bCount - aCount;
-            return aName.localeCompare(bName);
-        });
+            if (bScore !== aScore) return bScore - aScore
+            if (bCount !== aCount) return bCount - aCount
+            return aName.localeCompare(bName)
+        })
     }
 
     // Calculate relevance score for a tag
     private calculateRelevanceScore(tagName: string, searchTerm: string, count: number): number {
-        let score = 0;
+        let score = 0
         
         // Exact match gets highest priority
-        if (tagName === searchTerm) score += 1000;
+        if (tagName === searchTerm) score += 1000
         
         // Starts with search term
-        else if (tagName.startsWith(searchTerm)) score += 100;
+        else if (tagName.startsWith(searchTerm)) score += 100
         
         // Contains search term anywhere
-        else if (tagName.includes(searchTerm)) score += 10;
+        else if (tagName.includes(searchTerm)) score += 10
         
         // Boost by usage count (but less than search relevance)
-        score += Math.min(count, 5);
+        score += Math.min(count, 5)
         
-        return score;
+        return score
     }
 
     // Reorder items in the DOM
     private reorderTagItems(tagItems: Element[]) {
-        const tagsList = this.containerEl.querySelector('#tag-manager-list');
-        if (!tagsList) return;
+        const tagsList = this.containerEl.querySelector('#tag-manager-list')
+        if (!tagsList) return
         
         // Clear and re-add in sorted order
-        tagsList.innerHTML = '';
+        tagsList.innerHTML = ''
         tagItems.forEach(item => {
             if ((item as HTMLElement).style.display !== 'none') {
-                tagsList.appendChild(item);
+                tagsList.appendChild(item)
             }
-        });
+        })
     }
 }
 
 // ==================== TAG MANAGER SIDEBAR VIEW ====================
 class TagManagerSidebarView extends ItemView {
-    plugin: ImageTagPlugin;
-    tagManager: TagManagerView | null = null;
+    plugin: ImageTagPlugin
+    tagManager: TagManagerView | null = null
 
     constructor(leaf: WorkspaceLeaf, plugin: ImageTagPlugin) {
-        super(leaf);
-        this.plugin = plugin;
+        super(leaf)
+        this.plugin = plugin
     }
 
     getViewType(): string {
-        return VIEW_TYPE_TAG_MANAGER;
+        return VIEW_TYPE_TAG_MANAGER
     }
 
     getDisplayText(): string {
-        return 'Tag manager';
+        return 'Tag manager'
     }
 
     getIcon(): string {
-        return 'tags';
+        return 'tags'
     }
 
     async onOpen() {
-        const { containerEl } = this;
+        const { containerEl } = this
         
         // Clear any existing content
-        containerEl.empty();
+        containerEl.empty()
         
         // Add a container with proper class
-        const contentEl = containerEl.createDiv('tag-manager-container');
+        const contentEl = containerEl.createDiv('tag-manager-container')
         
         // Initialize the tag manager
-        this.tagManager = new TagManagerView(this.plugin, contentEl);
+        this.tagManager = new TagManagerView(this.plugin, contentEl)
     }
 
     async onClose() {
         // Cleanup
-        this.tagManager = null;
+        this.tagManager = null
     }
 }
 
 // ==================== SETTINGS TAB ====================
 class ImageTagSettingTab extends PluginSettingTab {
-    plugin: ImageTagPlugin;
+    plugin: ImageTagPlugin
 
     constructor(app: App, plugin: ImageTagPlugin) {
-        super(app, plugin);
-        this.plugin = plugin;
+        super(app, plugin)
+        this.plugin = plugin
     }
 
     display(): void {
-        const {containerEl} = this;
-        containerEl.empty();
+        const {containerEl} = this
+        containerEl.empty()
 
-        new PluginSettings(containerEl).setName("Image tag settings").setHeading();
+        new PluginSettings(containerEl).setName("Image tag settings").setHeading()
 
         // Default folder setting
         new PluginSettings(containerEl)
@@ -1076,9 +1102,9 @@ class ImageTagSettingTab extends PluginSettingTab {
                 .setPlaceholder('Image library')
                 .setValue(this.plugin.settings.defaultFolder)
                 .onChange(async (value) => {
-                    this.plugin.settings.defaultFolder = value;
-                    await this.plugin.saveSettings();
-                }));
+                    this.plugin.settings.defaultFolder = value
+                    await this.plugin.saveSettings()
+                }))
 
         // Auto-open modal setting
         new PluginSettings(containerEl)
@@ -1087,12 +1113,12 @@ class ImageTagSettingTab extends PluginSettingTab {
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.autoOpenModal)
                 .onChange(async (value) => {
-                    this.plugin.settings.autoOpenModal = value;
-                    await this.plugin.saveSettings();
-                }));
+                    this.plugin.settings.autoOpenModal = value
+                    await this.plugin.saveSettings()
+                }))
 
         // Tag manager section
-        new PluginSettings(containerEl).setName("Tag management").setHeading();
+        new PluginSettings(containerEl).setName("Tag management").setHeading()
 
         // Open sidebar button
         new PluginSettings(containerEl)
@@ -1103,11 +1129,11 @@ class ImageTagSettingTab extends PluginSettingTab {
                 .setCta()
                 .onClick(() => {
                     this.plugin.activateTagManagerView().catch(error => {
-                            console.error('Failed to open tag manager:', error);
+                            console.error('Failed to open tag manager:', error)
                             // Show notice to user
-                            new Notice('Failed to open tag manager');
-                        });
-                }));
+                            new Notice('Failed to open tag manager')
+                        })
+                }))
 		// Tag scanning section
 		new PluginSettings(containerEl)
 			.setName('Scan vault for tags')
@@ -1115,36 +1141,36 @@ class ImageTagSettingTab extends PluginSettingTab {
 			.addButton(btn => btn
 				.setButtonText('Scan now')
 				.onClick(async () => {
-                    const modal = new ConfirmationModal(this.app, 'This may take a few moments.', 'Scan your entire vault for existing tags? ');
-                    modal.open();
+                    const modal = new ConfirmationModal(this.app, 'This may take a few moments.', 'Scan your entire vault for existing tags? ')
+                    modal.open()
 					let confirmed =  false
-                    confirmed = await modal.promise;
+                    confirmed = await modal.promise
 					if (confirmed) {
-						const existingTags = await this.plugin.scanForExistingTags();
+						const existingTags = await this.plugin.scanForExistingTags()
 						
 						if (existingTags.length > 0) {
 							// Ask user if they want to merge or replace
-                            const modal = new ConfirmationModal(this.app, 'Merge with existing tags? (Cancel to replace all tags)', `Found ${existingTags.length} tags. `);
-							modal.open();
-                            let merge = false;
-                            merge= await modal.promise;                            
+                            const modal = new ConfirmationModal(this.app, 'Merge with existing tags? (Cancel to replace all tags)', `Found ${existingTags.length} tags. `)
+							modal.open()
+                            let merge = false
+                            merge= await modal.promise                            
 							
 							if (merge) {
 								// Merge
-								const mergedTags = [...new Set([...this.plugin.settings.tags, ...existingTags])];
-								this.plugin.settings.tags = mergedTags.sort();
+								const mergedTags = [...new Set([...this.plugin.settings.tags, ...existingTags])]
+								this.plugin.settings.tags = mergedTags.sort()
 							} else {
 								// Replace
-								this.plugin.settings.tags = existingTags.sort();
+								this.plugin.settings.tags = existingTags.sort()
 							}
 							
-							await this.plugin.saveSettings();
-							new Notice(`Updated tags. Total: ${this.plugin.settings.tags.length} tags`);
+							await this.plugin.saveSettings()
+							new Notice(`Updated tags. Total: ${this.plugin.settings.tags.length} tags`)
 						} else {
-							new Notice('No tags found in vault');
+							new Notice('No tags found in vault')
 						}
 					}
-        }));
+        }))
         // Reset to defaults
         new PluginSettings(containerEl)
             .setName('Reset to defaults')
@@ -1153,19 +1179,19 @@ class ImageTagSettingTab extends PluginSettingTab {
                 .setButtonText('Reset')
                 .setWarning()
                 .onClick(async () => {
-                    const title = "Reset everything to default";
+                    const title = "Reset everything to default"
                     const warninfo = {
                         txt: 'Are you sure to reset everything?',
                         txt1: 'This Action will also remove all your saved tag.',
                         txt2:'Think twice before action!!!'
-                    };
+                    }
                     const confirm =  await this.plugin.showCriticalWarning(title, warninfo, " I'm sure about what am I doing")
                     if (confirm) {
-                        this.plugin.settings = Object.assign({}, DEFAULT_SETTINGS);
-                        await this.plugin.saveSettings();
-                        this.display(); // Refresh
-                        new Notice('Settings reset to defaults');
+                        this.plugin.settings = Object.assign({}, DEFAULT_SETTINGS)
+                        await this.plugin.saveSettings()
+                        this.display() // Refresh
+                        new Notice('Settings reset to defaults')
                     }
-                }));
+                }))
     }
 }
