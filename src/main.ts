@@ -358,11 +358,11 @@ class TagAddingModal extends Modal {
     }
 
     onOpen() {
-        this.titleEl.setText ('Add New Tag')
+        this.titleEl.setText ('Add new tag')
         
         // Author input
         new PluginSettings(this.contentEl)
-            .setName('Tag Name')
+            .setName('Tag name')
             .addText(text => text
                 .setPlaceholder('E.g. , landscape, character')
                 .setValue(this.tagName)
@@ -375,7 +375,7 @@ class TagAddingModal extends Modal {
                 .setButtonText('Cancel')
                 .onClick(() => this.close()))
             .addButton(btn => btn
-                .setButtonText('Add Tag')
+                .setButtonText('Add tag')
                 .setCta()
                 .onClick(()=>this.addTag()))
 
@@ -643,13 +643,14 @@ class TagManagerView {
         // Tag name container
         const tagContent = tagItem.createDiv('tag-content')
 
-        const countBadge = tagContent.createEl('span', {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const countBadge = tagContent.createEl('span', {  
             text: tagCount.toString(),
             cls: 'tag-count'
         })
         
-        // Tag name
-        const tagName = tagContent.createEl('span', {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const tagName = tagContent.createEl('span', {  
             text: tag,
             cls: 'tag-name'
         })
