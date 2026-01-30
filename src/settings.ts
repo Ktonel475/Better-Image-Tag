@@ -1,34 +1,34 @@
 // settings.ts - UPDATED VERSION
-import { App, PluginSettingTab, Setting as PluginSettings } from "obsidian";
-import ImageTagPlugin from "./main";
+import { App, PluginSettingTab, Setting as PluginSettings } from "obsidian"
+import ImageTagPlugin from "./main"
 
 export interface ImageTagSettings {
-    tags: string[];
-    defaultFolder: string;
-    autoOpenModal: boolean;
+    tags: string[]
+    defaultFolder: string
+    autoOpenModal: boolean
+    showWelcomeModal: boolean
 }
 
 export const DEFAULT_SETTINGS: ImageTagSettings = {
-    tags: [
-        'Sample Tag A', 'Sample Tag B'      
-    ],
+    tags: [],
     defaultFolder: 'Image Library',
-    autoOpenModal: true
-};
+    autoOpenModal: true,
+    showWelcomeModal: true
+}
 
 export class ImageTagSettingTab extends PluginSettingTab {
-    plugin: ImageTagPlugin;
+    plugin: ImageTagPlugin
 
     constructor(app: App, plugin: ImageTagPlugin) {
-        super(app, plugin);
-        this.plugin = plugin;
+        super(app, plugin)
+        this.plugin = plugin
     }
 
     display(): void {
-        const { containerEl } = this;
-        containerEl.empty();
+        const { containerEl } = this
+        containerEl.empty()
 
-        new PluginSettings(containerEl).setName("Image tag settings").setHeading();
+        new PluginSettings(containerEl).setName("Image tag settings").setHeading()
 
         // Default folder setting
         new PluginSettings(containerEl)
@@ -38,9 +38,9 @@ export class ImageTagSettingTab extends PluginSettingTab {
                 .setPlaceholder('Image library')
                 .setValue(this.plugin.settings.defaultFolder)
                 .onChange(async (value) => {
-                    this.plugin.settings.defaultFolder = value;
-                    await this.plugin.saveSettings();
-                }));
+                    this.plugin.settings.defaultFolder = value
+                    await this.plugin.saveSettings()
+                }))
 
         // Auto-open modal setting
         new PluginSettings(containerEl)
@@ -49,8 +49,8 @@ export class ImageTagSettingTab extends PluginSettingTab {
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.autoOpenModal)
                 .onChange(async (value) => {
-                    this.plugin.settings.autoOpenModal = value;
-                    await this.plugin.saveSettings();
-                }));
+                    this.plugin.settings.autoOpenModal = value
+                    await this.plugin.saveSettings()
+                }))
     }
 }
