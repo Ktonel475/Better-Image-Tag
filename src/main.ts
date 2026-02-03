@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, Setting as PluginSettings, PluginSettingTab, ItemView, WorkspaceLeaf, TFile, Events } from 'obsidian'
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, Setting as PluginSettings, PluginSettingTab, ItemView, WorkspaceLeaf, TFile } from 'obsidian'
 import { ImageTagSettings, DEFAULT_SETTINGS } from 'settings'
 
 const VIEW_TYPE_TAG_MANAGER = 'tag-manager-view'
@@ -21,7 +21,7 @@ export default class ImageTagPlugin extends Plugin {
                 //Activate Icon on tab by default
                 const modal = new WelcomeModal(this.app, this)
                 modal.open()
-                this.activateTagManagerView()
+                await this.activateTagManagerView()
             }
         })
 		this.registerEvent(
@@ -164,10 +164,10 @@ export default class ImageTagPlugin extends Plugin {
 				const content = await this.app.vault.read(file)
 				
 				// Find all #tags in the content
-				const tagMatches = content.match(/(?:#|\-\s)([a-zA-Z0-9_-]+)/g)
+				const tagMatches = content.match(/(?:#|\\-\s)([a-zA-Z0-9_-]+)/g)
 				if (tagMatches) {
                     tagMatches.forEach(tagMatch => {
-                        const cleanTag = tagMatch.replace(/^(?:#|\-\s)/, '').toLowerCase().trim()
+                        const cleanTag = tagMatch.replace(/^(?:#|\\-\s)/, '').toLowerCase().trim()
                         
                         if (cleanTag && cleanTag.length > 1) { // Skip single character tags
                             foundTags.add(cleanTag)
@@ -378,55 +378,55 @@ class TagManagerView {
         this.renderTagsList()  
     }
 
-  async renderTagsList() {
-    let tagsContainer = this.containerEl.querySelector('#tag-manager-list');
+  renderTagsList() {
+    let tagsContainer = this.containerEl.querySelector('#tag-manager-list')
 
     if (!tagsContainer) {
-        tagsContainer = this.containerEl.createDiv('tag-manager-list');
-        tagsContainer.id = 'tag-manager-list';
+        tagsContainer = this.containerEl.createDiv('tag-manager-list')
+        tagsContainer.id = 'tag-manager-list'
     }
     
     // Get all files and their metadata
-    const files = this.plugin.app.vault.getMarkdownFiles();
-    const tagCounts: Record<string, number> = {};
+    const files = this.plugin.app.vault.getMarkdownFiles()
+    const tagCounts: Record<string, number> = {}
     
     files.forEach(file => {
-        const cache = this.plugin.app.metadataCache.getFileCache(file);
+        const cache = this.plugin.app.metadataCache.getFileCache(file)
         if (cache?.tags) {
             cache.tags.forEach(tagInfo => {
-                const tag = tagInfo.tag.substring(1);
-                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-            });
+                const tag = tagInfo.tag.substring(1)
+                tagCounts[tag] = (tagCounts[tag] || 0) + 1
+            })
         }
         
         // Also check frontmatter tags
         if (cache?.frontmatter?.tags) {
             const tags = Array.isArray(cache.frontmatter.tags) 
                 ? cache.frontmatter.tags 
-                : [cache.frontmatter.tags];
+                : [cache.frontmatter.tags]
             
             tags.forEach(tag => {
-                const cleanTag = typeof tag === 'string' ? tag : String(tag);
-                tagCounts[cleanTag] = (tagCounts[cleanTag] || 0) + 1;
-            });
+                const cleanTag = typeof tag === 'string' ? tag : String(tag)
+                tagCounts[cleanTag] = (tagCounts[cleanTag] || 0) + 1
+            })
         }
-    });
+    })
     
-    tagsContainer.empty();
+    tagsContainer.empty()
     
-    const existingTags = new Set();
+    const existingTags = new Set()
     tagsContainer.querySelectorAll('.tag-manager-item').forEach(item => {
-        existingTags.add(item.textContent);
-    });
+        existingTags.add(item.textContent)
+    })
     
     // Display tags from settings with their counts
     this.plugin.settings.tags.forEach(tag => {
         // Skip if already exists
-        if (existingTags.has(tag)) return;
+        if (existingTags.has(tag)) return
         
-        const count = tagCounts[tag] || 0;
-        this.createTagItem(tag, count, tagsContainer as HTMLElement);
-    });
+        const count = tagCounts[tag] || 0
+        this.createTagItem(tag, count, tagsContainer as HTMLElement)
+    })
 }
 
     createTagItem(tag: string, tagCount: number, container: HTMLElement) {
@@ -440,7 +440,7 @@ class TagManagerView {
             cls: 'tag-count'
         })
         
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         
         const tagName = tagContent.createEl('span', { 
             text: tag,
             cls: 'tag-name'
@@ -465,21 +465,21 @@ class TagManagerView {
             title: 'Delete tag'
         })
 
-        editBtn.addEventListener('click', async (e) => {
+        editBtn.addEventListener('click',  (e) => {
             if (tagCount > 0) {
                 const modal = new EditModal(
                     this.plugin.app,
                     tag,
                     tagCount,
-                    async (newName: string | null) => {
+                    (newName: string | null) => {
                         if (newName && newName !== tag) {
                             try {
-                                await this.EditTag(tag, newName);
+                                void this.EditTag(tag, newName)
                                 new Notice(`Successfully renamed tag from #${tag} to #${newName}`)
                                 tagName.setText(newName)
                             } catch (error) {
-                                console.error("Failed to edit tag:", error);
-                                new Notice(`Failed to rename tag: ${error}`)
+                                console.error("Failed to edit tag:", error)
+                                new Notice(`Failed to rename tag: ${String(error)}`)
                             }
                         }
                     }
@@ -499,29 +499,29 @@ class TagManagerView {
                 
                 // Handle Enter to save
                 input.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            const newTag = input.value.trim()
-                            if (newTag && newTag !== tag) {
-                                this.plugin.addNewTag(newTag)
-                                this.plugin.removeTag(tag)
-                                tagName.setText(newTag)
-                            } else {
-                                tagName.setText(tag)
-                            }
-                        }
-                        
-                        if (e.key === 'Escape') {
+                    if (e.key === 'Enter') {
+                        const newTag = input.value.trim()
+                        if (newTag && newTag !== tag) {
+                            this.plugin.addNewTag(newTag).catch(console.error)
+                            this.plugin.removeTag(tag).catch(console.error)
+                            tagName.setText(newTag)
+                        } else {
                             tagName.setText(tag)
                         }
-                    })
+                    }
                     
-                    input.addEventListener('blur', () => {
+                    if (e.key === 'Escape') {
                         tagName.setText(tag)
-                    })
+                    }
+                })
                     
-                    tagName.removeClass('tag-input-mode')
-                }
-            })
+                input.addEventListener('blur', () => {
+                    tagName.setText(tag)
+                })
+                
+                tagName.removeClass('tag-input-mode')
+            }
+        })
 
         deleteBtn.addEventListener('click', (e) => {
             void (async () => {
@@ -563,11 +563,11 @@ class TagManagerView {
                     const newContent = content.replace(tagRegex, `$1${edit}`)
                     await this.plugin.app.vault.modify(file, newContent)
                 }
-                this.plugin.addNewTag(edit)
-                this.plugin.removeTag(tag)
+                await this.plugin.addNewTag(edit)
+                await this.plugin.removeTag(tag)
             } catch (error) {
                 console.error(`Error processing ${file.path}:`, error)
-                new Notice(`Failed to edit tag in ${file.path}: ${error}`)
+                new Notice(`Failed to edit tag in ${String(error)}`)
             }
         }
     }
@@ -760,7 +760,6 @@ class TagManagerView {
 
     private async removeTagFromAllFiles(tag: string): Promise<void> {
         const files = this.plugin.app.vault.getMarkdownFiles()
-        let updatedFiles = 0
         
         for (const file of files) {
             try {
@@ -816,7 +815,6 @@ class TagManagerView {
                 
                 if (modified) {
                     await this.plugin.app.vault.modify(file, content)
-                    updatedFiles++
                 }
                 
             } catch (error) {
@@ -908,66 +906,66 @@ class TagManagerView {
 
 //================MODAL ==================
 class WelcomeModal extends Modal {
-    plugin: ImageTagPlugin;
+    plugin: ImageTagPlugin
     
     constructor(app: App, plugin: ImageTagPlugin) {
-        super(app);
-        this.plugin = plugin;
+        super(app)
+        this.plugin = plugin
     }
 
     onOpen() {
         this.containerEl.addClass('welcome-modal')
-        this.titleEl.setText('Welcome to Image Tag Plugin');
+        this.titleEl.setText('Welcome to better image tag')
 
         // Main instruction container
-        const instructionDiv = this.contentEl.createDiv('.instruction');
-        instructionDiv.createEl('p', { text: 'Thank you for installing the Image Tag plugin! This plugin helps you organize and tag images in your vault.' });
+        const instructionDiv = this.contentEl.createDiv('.instruction')
+        instructionDiv.createEl('p', { text: 'Thank you for installing the better image tag! This plugin helps you organize and tag images in your vault.' })
 
         // How to use section
-        this.contentEl.createEl('h2', { text: 'How to use' });
+        this.contentEl.createEl('h2', { text: 'How to use' })
         
-        this.contentEl.createEl('h3', { text: '1. Add desired tags in tag manager tab' });
-        this.contentEl.createEl('p', { text: 'Go to the plugin settings and add custom tags that you want to use for your images.' });
+        this.contentEl.createEl('h3', { text: '1. Add desired tags in tag manager tab' })
+        this.contentEl.createEl('p', { text: 'Go to the plugin settings and add custom tags that you want to use for your images.' })
         
-        this.contentEl.createEl('h3', { text: '2. Right click any image in vault and select image tag to create note with tags' });
-        this.contentEl.createEl('p', { text: 'In the file explorer, right-click on any image file and choose "Add Image Tags" from the context menu.' });
+        this.contentEl.createEl('h3', { text: '2. Right click any image in vault and select image tag to create note with tags' })
+        this.contentEl.createEl('p', { text: 'In the file explorer, right-click on any image file and choose "add image tags" from the context menu.' })
         
-        this.contentEl.createEl('h3', { text: '3. Manage your tagged images' });
-        this.contentEl.createEl('p', { text: 'Use the Image Tag panel to view all tagged images, search by tags, and manage your image collection.' });
+        this.contentEl.createEl('h3', { text: '3. Manage your tagged images' })
+        this.contentEl.createEl('p', { text: 'Use the tag manager to view all tagged images, search by tags, and manage your image collection.' })
 
         // Optional features section
-        this.contentEl.createEl('h2', { text: 'Optional Features' });
-        this.contentEl.createEl('p', { text: 'Optional: You can merge tags in your vault to plugin by checking scan tag in plugin settings' });
-        this.contentEl.createEl('p', { text: 'This will scan your existing notes for tags and add them to your tag manager.' });
+        this.contentEl.createEl('h2', { text: 'Optional' })
+        this.contentEl.createEl('p', { text: 'You can merge tags in your vault to plugin by checking scan tag in plugin settings' })
+        this.contentEl.createEl('p', { text: 'This will scan your existing notes for tags and add them to your tag manager.' })
 
         // Quick tips section
-        this.contentEl.createEl('h2', { text: 'Quick Tips' });
-        const tipsList = this.contentEl.createEl('ul');
-        tipsList.createEl('li', { text: 'Use # in front of tags (e.g., #landscape, #portrait)' });
-        tipsList.createEl('li', { text: 'You can add multiple tags to a single image' });
-        tipsList.createEl('li', { text: 'Tags are stored in the image\'s frontmatter' });
+        this.contentEl.createEl('h2', { text: 'Quick tips' })
+        const tipsList = this.contentEl.createEl('ul')
+        tipsList.createEl('li', { text: 'Use # in front of tags (e.g., #landscape, #portrait)' })
+        tipsList.createEl('li', { text: 'You can add multiple tags to a single image' })
+        tipsList.createEl('li', { text: 'Tags are stored in the image\'s frontmatter' })
 
         // Don't show again option
-        const footer = this.contentEl.createDiv('modal-footer');
-        const dontShowAgain = footer.createEl('label');
-        const checkbox = dontShowAgain.createEl('input', { type: 'checkbox' });
-        dontShowAgain.appendText(' Don\'t show this welcome message again');
+        const footer = this.contentEl.createDiv('modal-footer')
+        const dontShowAgain = footer.createEl('label')
+        const checkbox = dontShowAgain.createEl('input', { type: 'checkbox' })
+        dontShowAgain.appendText(' Don\'t show this welcome message again')
         
         checkbox.addEventListener('change', (e) => {
-            const target = e.target as HTMLInputElement;
-            this.plugin.settings.showWelcomeModal = !target.checked;
-            this.plugin.saveSettings();
-        });
+            const target = e.target as HTMLInputElement
+            this.plugin.settings.showWelcomeModal = !target.checked
+            this.plugin.saveSettings().catch(console.error)
+        })
 
         // Close button
-        const closeButton = footer.createEl('button', { text: 'Get Started' });
-        closeButton.classList.add('mod-cta');
-        closeButton.addEventListener('click', () => this.close());
+        const closeButton = footer.createEl('button', { text: 'Get started' })
+        closeButton.classList.add('mod-cta')
+        closeButton.addEventListener('click', () => this.close())
     }
 
     onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
+        const { contentEl } = this
+        contentEl.empty()
     }
 }
 
@@ -1007,9 +1005,9 @@ class TagAddingModal extends Modal {
             this.close()
         })
 
-          this.scope.register([], 'Enter', (evt) => {
+          this.scope.register([], 'Enter', async (evt) => {
             evt.preventDefault()
-            this.addTag()
+            await this.addTag()
         })
     }
             
@@ -1254,7 +1252,7 @@ class EditModal extends Modal {
     }
 
     onOpen(): void {
-        super.onOpen()
+        void super.onOpen()
         const input = this.contentEl.querySelector('input')
         if (input) {
             input.focus()
