@@ -14,4 +14,6 @@ Tagging image by just right-clicking and pick desired tags without typing, and m
 - `Rescan vault for existing tags`
 - `Open tag manager sidebar`
 
-Tag your images, find them fast.
+### Why This Project
+
+Originally, I was using pinterest as image reference library, as it's the best one that I can search from anywhere, any device convinently. However, I notice the site flooding with enormous amount of AI work and nsfw material (ads) which I wasn't intented to have them. I think to myself, why don't I just use obsidian for it, and here's how come this project.
