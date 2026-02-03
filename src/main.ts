@@ -164,10 +164,10 @@ export default class ImageTagPlugin extends Plugin {
 				const content = await this.app.vault.read(file)
 				
 				// Find all #tags in the content
-				const tagMatches = content.match(/(?:#|\\-\s)([a-zA-Z0-9_-]+)/g)
+				const tagMatches = content.match(/(?:#|-\s)([a-zA-Z0-9_-]+)/g)
 				if (tagMatches) {
                     tagMatches.forEach(tagMatch => {
-                        const cleanTag = tagMatch.replace(/^(?:#|\\-\s)/, '').toLowerCase().trim()
+                        const cleanTag = tagMatch.replace(/^(?:#|-\s)/, '').toLowerCase().trim()
                         
                         if (cleanTag && cleanTag.length > 1) { // Skip single character tags
                             foundTags.add(cleanTag)
