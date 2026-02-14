@@ -32,8 +32,8 @@ export default class ImageTagPlugin extends Plugin {
 						item
 							.setTitle('Image tag')
 							.setIcon('tag')
-							.onClick(async () => {
-								await this.tagImageFile(file)
+							.onClick(() => {
+								this.tagImageFile(file)
 							})
 					})
 				}
@@ -51,7 +51,7 @@ export default class ImageTagPlugin extends Plugin {
                     return
                 }
                 
-                new NoteAddingModal(this.app, imageName, this.allTags, this.settings.defaultFolder).open()
+                new NoteAddingModal(this.app, this, imageName, this.allTags, this.settings.defaultFolder).open()
             }
         })
 
@@ -234,10 +234,11 @@ export default class ImageTagPlugin extends Plugin {
 	}
 
 	// Helper: Tag image file from context menu
-	private async tagImageFile(file: TFile) {
+	private tagImageFile(file: TFile) {
 		// Show tag modal
 		new NoteAddingModal(
 			this.app, 
+            this,
 			file.name, 
 			this.allTags, 
 			this.settings.defaultFolder
@@ -321,23 +322,18 @@ class RenderElement extends ItemView {
         return 'tags'
     }
 
-    async onOpen() {
-        const { containerEl } = this
-        
-        // Clear any existing content
-        containerEl.empty()
-        
-        // Add a container with proper class
-        const contentEl = containerEl.createDiv('tag-manager-container')
-        
-        // Initialize the tag manager
-        this.tagManager = new TagManagerView(this.plugin, contentEl)
+    // @ts-ignore: Obsidian API requires this to be async/Promise-returning
+    async onOpen(): Promise<void> {
+        const { containerEl } = this;
+        containerEl.empty();
+        const contentEl = containerEl.createDiv('tag-manager-container');
+        this.tagManager = new TagManagerView(this.plugin, contentEl);
     }
 
-    async onClose() {
-        // Cleanup
-        this.tagManager = null
-    }
+    // @ts-ignore: Obsidian API requires this to be async/Promise-returning
+    async onClose(): Promise<void> {
+        this.tagManager = null;
+    }   
 }
 
 // ==================== SIDEBAR TAG MANAGER ====================
@@ -434,7 +430,7 @@ class TagManagerView {
         const tagContent = tagItem.createDiv('tag-content')
         const btnContainer = tagItem.createDiv('btn-Container')
         
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Count number of tags, enable dynamic changing but no function
         const countBadge = tagContent.createEl('span', {  
             text: tagCount.toString(),
             cls: 'tag-count'
@@ -572,7 +568,7 @@ class TagManagerView {
         }
     }
    
-    async DeleteTag(tag: string) {
+    DeleteTag(tag: string) {
         const tagsList = this.containerEl.querySelector('#tag-manager-list')
         if (!tagsList) return
 
@@ -743,9 +739,7 @@ class TagManagerView {
                     console.error("Tag Removal Error", error)
                 })
                 
-               await this.DeleteTag(tag).catch(error => {
-                    console.error("Tag Deletion Error:", error)
-               })
+                this.DeleteTag(tag)
                 
                 // Update stats
                 this.updateStats()
@@ -1042,12 +1036,14 @@ class NoteAddingModal extends Modal {
     defaultFolder: string
     author: string = ''
     noteContent: string = ''
+    plugins: ImageTagPlugin
 
-    constructor(app: App, imageName: string, allTags: string[], defaultFolder: string) {
+    constructor(app: App, plugin: ImageTagPlugin , imageName: string, allTags: string[], defaultFolder: string) {
         super(app)
         this.imageName = imageName
         this.allTags = allTags
         this.defaultFolder = defaultFolder
+        this.plugins = plugin
     }
 
     onOpen() {
@@ -1155,9 +1151,8 @@ ${this.noteContent ? `## Notes\n\n${this.noteContent}` : ''}`
             await this.app.vault.create(fullPath, fullContent)
             
             // Open the note if setting is enabled
-            //@ts-ignore
-             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            if (this.app.plugins.plugins?.ImageTag?.settings?.autoOpenModal) {
+            //@ts-ignore - Point to plugin itself
+            if (this.plugins.settings.autoOpenModal) {
                 const leaf = this.app.workspace.getLeaf()
                 const file = this.app.vault.getAbstractFileByPath(fullPath)
                 if (file) {
