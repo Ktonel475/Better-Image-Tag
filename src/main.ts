@@ -322,17 +322,18 @@ class RenderElement extends ItemView {
         return 'tags'
     }
 
-    // @ts-ignore: Obsidian API requires this to be async/Promise-returning
-    async onOpen(): Promise<void> {
-        const { containerEl } = this;
-        containerEl.empty();
-        const contentEl = containerEl.createDiv('tag-manager-container');
-        this.tagManager = new TagManagerView(this.plugin, contentEl);
+    onOpen(): Promise<void> {
+        const { containerEl } = this
+        containerEl.empty()
+        const contentEl = containerEl.createDiv('tag-manager-container')
+        this.tagManager = new TagManagerView(this.plugin, contentEl)
+        return Promise.resolve()
     }
 
-    // @ts-ignore: Obsidian API requires this to be async/Promise-returning
-    async onClose(): Promise<void> {
-        this.tagManager = null;
+
+    onClose(): Promise<void> {
+        this.tagManager = null
+        return Promise.resolve()
     }   
 }
 
