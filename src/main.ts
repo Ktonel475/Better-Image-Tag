@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, Setting as PluginSettings, PluginSettingTab, ItemView, WorkspaceLeaf, TFile } from 'obsidian'
+import { App, Editor, Modal, Notice, Plugin, Setting as PluginSettings, PluginSettingTab, ItemView, WorkspaceLeaf, TFile } from 'obsidian'
 import { ImageTagSettings, DEFAULT_SETTINGS } from 'settings'
 
 const VIEW_TYPE_TAG_MANAGER = 'tag-manager-view'
@@ -43,7 +43,7 @@ export default class ImageTagPlugin extends Plugin {
 		this.addCommand({
 			id: 'tag-selected-image',
 			name: 'Tag selected image',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
+			editorCallback: (editor: Editor) => {
 				const imageName = this.getImageLinkAtCursor(editor)
 
 				if (!imageName) {
@@ -471,8 +471,8 @@ class TagManagerView {
 					(newName: string | null) => {
 						if (newName && newName !== tag) {
 							try {
-								void this.EditTag(tag, newName)
-								new Notice(`Successfully renamed tag from #${tag} to #${newName}`)
+								void this.editTag(tag, newName)
+								new Notice(`Successfully renamed tag from ${tag} to ${newName}`)
 								tagName.setText(newName)
 							} catch (error) {
 								console.error("Failed to edit tag:", error)
@@ -549,26 +549,33 @@ class TagManagerView {
 		})
 		return tagItem
 	}
-	async EditTag(tag: string, edit: string) {
-		const files = this.plugin.app.vault.getMarkdownFiles()
+	async editTag(oldTag: string, newTag: string) {
+		const files = this.plugin.app.vault.getMarkdownFiles();
+
 		for (const file of files) {
 			try {
-				const content = await this.plugin.app.vault.read(file)
-				const tagRegex = new RegExp(`(#|\\-\\s)${tag}\\b`, 'g')
-				if (tagRegex.test(content)) {
-					tagRegex.lastIndex = 0
-					const newContent = content.replace(tagRegex, `$1${edit}`)
-					await this.plugin.app.vault.modify(file, newContent)
-				}
-				await this.plugin.addNewTag(edit)
-				await this.plugin.removeTag(tag)
+				await this.plugin.app.fileManager.processFrontMatter(file, (frontmatter) => {
+					// Check if 'tags' exists and is an array
+					if (frontmatter.tags && Array.isArray(frontmatter.tags)) {
+						const index = frontmatter.tags.indexOf(oldTag);
+						if (index !== -1) {
+							frontmatter.tags[index] = newTag;
+						}
+					}
+					// Handle cases where 'tags' might be a single string
+					else if (frontmatter.tags === oldTag) {
+						frontmatter.tags = newTag;
+					}
+				});
 			} catch (error) {
-				console.error(`Error processing ${file.path}:`, error)
-				new Notice(`Failed to edit tag in ${String(error)}`)
+				console.error(`Error processing ${file.path}:`, error);
 			}
 		}
-	}
 
+		// Update your global tag list/cache after the loop
+		await this.plugin.addNewTag(newTag);
+		await this.plugin.removeTag(oldTag);
+	}
 	DeleteTag(tag: string) {
 		const tagsList = this.containerEl.querySelector('#tag-manager-list')
 		if (!tagsList) return
