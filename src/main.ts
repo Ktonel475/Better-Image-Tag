@@ -471,7 +471,7 @@ class TagManagerView {
 					(newName: string | null) => {
 						if (newName && newName !== tag) {
 							try {
-								void this.editTag(tag, newName)
+								void this.EditTag(tag, newName)
 								new Notice(`Successfully renamed tag from ${tag} to ${newName}`)
 								tagName.setText(newName)
 							} catch (error) {
@@ -549,32 +549,40 @@ class TagManagerView {
 		})
 		return tagItem
 	}
-	async editTag(oldTag: string, newTag: string) {
+
+	async EditTag(tag: string, edit: string) {
 		const files = this.plugin.app.vault.getMarkdownFiles();
+		const tagRegex = new RegExp(`(#|\\-\\s)${tag}\\b`, 'g');
 
 		for (const file of files) {
 			try {
-				await this.plugin.app.fileManager.processFrontMatter(file, (frontmatter) => {
-					// Check if 'tags' exists and is an array
-					if (frontmatter.tags && Array.isArray(frontmatter.tags)) {
-						const index = frontmatter.tags.indexOf(oldTag);
-						if (index !== -1) {
-							frontmatter.tags[index] = newTag;
-						}
-					}
-					// Handle cases where 'tags' might be a single string
-					else if (frontmatter.tags === oldTag) {
-						frontmatter.tags = newTag;
+				// 1. Handle Frontmatter with Type Safety
+				await this.plugin.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+					const currentTags = frontmatter["tags"];
+
+					if (!currentTags) return;
+					if (Array.isArray(currentTags)) {
+						frontmatter["tags"] = (currentTags as unknown[]).map((t: unknown): string => {
+							const tagString = String(t);
+							return tagString === tag ? edit : tagString;
+						});
+					} else if (typeof currentTags === 'string' && currentTags === tag) {
+						frontmatter["tags"] = edit;
 					}
 				});
+
+				// 2. Handle Document Body
+				await this.plugin.app.vault.process(file, (data) => {
+					return tagRegex.test(data) ? data.replace(tagRegex, `$1${edit}`) : data;
+				});
+
 			} catch (error) {
 				console.error(`Error processing ${file.path}:`, error);
 			}
 		}
 
-		// Update your global tag list/cache after the loop
-		await this.plugin.addNewTag(newTag);
-		await this.plugin.removeTag(oldTag);
+		await this.plugin.addNewTag(edit);
+		await this.plugin.removeTag(tag);
 	}
 	DeleteTag(tag: string) {
 		const tagsList = this.containerEl.querySelector('#tag-manager-list')
