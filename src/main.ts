@@ -474,6 +474,7 @@ class TagManagerView {
 								void this.EditTag(tag, newName)
 								new Notice(`Successfully renamed tag from ${tag} to ${newName}`)
 								tagName.setText(newName)
+								tag = newName
 							} catch (error) {
 								console.error("Failed to edit tag:", error)
 								new Notice(`Failed to rename tag: ${String(error)}`)
@@ -495,13 +496,14 @@ class TagManagerView {
 				input.select()
 
 				// Handle Enter to save
-				input.addEventListener('keydown', (e) => {    //TODO: add change to modify internal value of tag
+				input.addEventListener('keydown', (e) => {
 					if (e.key === 'Enter') {
 						const newTag = input.value.trim()
 						if (newTag && newTag !== tag) {
 							this.plugin.addNewTag(newTag).catch(console.error)
 							this.plugin.removeTag(tag).catch(console.error)
 							tagName.setText(newTag)
+							tag = newTag
 						} else {
 							tagName.setText(tag)
 						}
