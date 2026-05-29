@@ -17,7 +17,6 @@ export default class ImageTagPlugin extends Plugin {
 			JSON.stringify(this.settings.tags) === JSON.stringify(DEFAULT_SETTINGS.tags)
 		this.app.workspace.onLayoutReady(async () => {
 			if (isFirstInstall) {
-				// Show notice of scanning existing tags from vault
 				//Activate Icon on tab by default
 				const modal = new WelcomeModal(this.app, this)
 				modal.open()
@@ -26,7 +25,6 @@ export default class ImageTagPlugin extends Plugin {
 		})
 		this.registerEvent(
 			this.app.workspace.on('file-menu', (menu, file) => {
-				// Check if it's an image file
 				if (file instanceof TFile && this.isImageFile(file)) {
 					menu.addItem((item) => {
 						item
@@ -66,19 +64,16 @@ export default class ImageTagPlugin extends Plugin {
 			}
 		})
 
-		// Register the sidebar view
 		this.registerView(
 			VIEW_TYPE_TAG_MANAGER,
 			(leaf) => new RenderElement(leaf, this)
 		)
 
-		// Add settings tab
 		this.addSettingTab(new ImageTagSettingTab(this.app, this))
 
 		console.debug('ImageTag plugin loaded')
 	}
 
-	// Helper to extract image link
 	getImageLinkAtCursor(editor: Editor): string | null {
 		const cursor = editor.getCursor()
 		const line = editor.getLine(cursor.line)
@@ -90,7 +85,6 @@ export default class ImageTagPlugin extends Plugin {
 		return null
 	}
 
-	// Settings management
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<ImageTagSettings>)
 	}
@@ -124,11 +118,9 @@ export default class ImageTagPlugin extends Plugin {
 	async activateTagManagerView() {
 		const { workspace } = this.app
 
-		// Try to find existing tag manager view
 		let leaf: WorkspaceLeaf | undefined = workspace.getLeavesOfType(VIEW_TYPE_TAG_MANAGER)[0]
 
 		if (!leaf) {
-			// Create new leaf in right sidebar
 			const newLeaf = workspace.getLeftLeaf(false)
 			if (newLeaf) {
 				leaf = newLeaf
@@ -137,7 +129,6 @@ export default class ImageTagPlugin extends Plugin {
 					active: true,
 				})
 			} else {
-				// Create new tab if no right sidebar
 				leaf = workspace.getLeaf(true)
 				await leaf.setViewState({
 					type: VIEW_TYPE_TAG_MANAGER,
@@ -146,7 +137,6 @@ export default class ImageTagPlugin extends Plugin {
 			}
 		}
 
-		// Reveal the leaf if we have one
 		if (leaf) {
 			workspace.revealLeaf(leaf).catch(error => {
 				console.error(error)
@@ -175,7 +165,7 @@ export default class ImageTagPlugin extends Plugin {
 					})
 				}
 
-				// Also check frontmatter tags
+				// frontmatter tags
 				const frontmatterMatch = content.match(/tags:\s*\[([\s\S]*?)\]/)
 				if (frontmatterMatch) {
 					const tagsString = frontmatterMatch?.[1]
@@ -227,15 +217,12 @@ export default class ImageTagPlugin extends Plugin {
 
 		return newTags
 	}
-	// Helper: Check if file is an image
 	private isImageFile(file: TFile): boolean {
 		const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg']
 		return imageExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
 	}
 
-	// Helper: Tag image file from context menu
 	private tagImageFile(file: TFile) {
-		// Show tag modal
 		new NoteAddingModal(
 			this.app,
 			this,
@@ -251,7 +238,7 @@ export default class ImageTagPlugin extends Plugin {
 
 	public async showCriticalWarning(title: string, warnInfo: { txt: string, txt1?: string, txt2?: string }, confirmbtn: string): Promise<boolean> {
 		return new Promise((resolve) => {
-			// Create custom modal for better UX
+			// Custom modal for better UX
 			const modal = new Modal(this.app)
 			modal.titleEl.setText(title)
 
@@ -657,7 +644,7 @@ class TagManagerView {
 
 	renderSearchAndSort() {
 		const controlContainer = this.containerEl.createDiv('tag-search-sort-container')
-
+		const activeDocument = this.containerEl.ownerDocument;
 		// Search input
 		const searchInput = controlContainer.createEl('input', {
 			type: 'text',
@@ -1220,43 +1207,92 @@ class EditModal extends Modal {
 
 		this.titleEl.setText('Editing tag name')
 
+		let errorEl: HTMLElement
+		let confirmBtn: HTMLButtonElement
+
+		const isValidTagName = (tag: string): boolean => {
+			const trimmed = tag.trim()
+
+			// Must contain at least one non-numeric character
+			return trimmed.length > 0 && /[^\d]/.test(trimmed)
+		}
+
+		const updateValidation = () => {
+			const trimmed = this.edit.trim()
+
+			if (!trimmed) {
+				errorEl.setText('')
+				confirmBtn.disabled = true
+				return
+			}
+
+			if (!isValidTagName(trimmed)) {
+				errorEl.setText(
+					'Tag must contain at least one non-numerical character.'
+				)
+				confirmBtn.disabled = true
+				return
+			}
+
+			errorEl.setText('')
+			confirmBtn.disabled = trimmed === this.oldTagName
+		}
+
 		new PluginSettings(this.contentEl)
 			.setName("New tag name")
-			.setDesc(`This edit would apply to ${tagCount} entit${tagCount > 1 ? 'ies' : 'y'} in all files.`)
-			.addText(text => text
-				.setValue(oldTagName)
-				.onChange(val => {
-					this.edit = val
-				})
+			.setDesc(
+				`This edit would apply to ${tagCount} entit${tagCount > 1 ? 'ies' : 'y'} in all files.`
+			)
+			.addText(text =>
+				text
+					.setValue(oldTagName)
+					.onChange(val => {
+						this.edit = val
+						updateValidation()
+					})
 			)
 
-		const btnContainer = this.contentEl.createDiv({ cls: 'modal-button-container' })
+		errorEl = this.contentEl.createDiv({
+			cls: 'setting-item-description mod-warning'
+		})
 
-		const cancelBtn = btnContainer.createEl('button', { text: 'Cancel' })
+		const btnContainer = this.contentEl.createDiv({
+			cls: 'modal-button-container'
+		})
+
+		const cancelBtn = btnContainer.createEl('button', {
+			text: 'Cancel'
+		})
 		cancelBtn.addEventListener('click', () => {
 			if (this.onCloseCallback) this.onCloseCallback()
 			this.close()
 		})
 
-		const confirmBtn = btnContainer.createEl('button', {
+		confirmBtn = btnContainer.createEl('button', {
 			text: 'Confirm',
 			cls: 'mod-cta'
 		})
-		confirmBtn.addEventListener('click', () => {
-			if (this.edit.trim() && this.edit !== this.oldTagName) {
-				this.onConfirm(this.edit)
+
+		const submit = () => {
+			const trimmed = this.edit.trim()
+
+			if (
+				trimmed &&
+				trimmed !== this.oldTagName &&
+				isValidTagName(trimmed)
+			) {
+				this.onConfirm(trimmed)
 			}
+
 			if (this.onCloseCallback) this.onCloseCallback()
 			this.close()
-		})
+		}
+
+		confirmBtn.addEventListener('click', submit)
 
 		this.scope.register([], 'Enter', (evt) => {
 			evt.preventDefault()
-			if (this.edit.trim() && this.edit !== this.oldTagName) {
-				this.onConfirm(this.edit)
-			}
-			if (this.onCloseCallback) this.onCloseCallback()
-			this.close()
+			if (!confirmBtn.disabled) submit()
 		})
 
 		this.scope.register([], 'Escape', (evt) => {
@@ -1264,6 +1300,8 @@ class EditModal extends Modal {
 			if (this.onCloseCallback) this.onCloseCallback()
 			this.close()
 		})
+
+		updateValidation()
 	}
 
 	onOpen(): void {

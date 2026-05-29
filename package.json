@@ -1,6 +1,6 @@
 {
 	"name": "better-image-tag",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Visual image tagging with sidebar manager. Right-click images or select in-editor to tag with clickable buttons. Stores tags in plugin settings.",
 	"main": "main.js",
 	"type": "module",

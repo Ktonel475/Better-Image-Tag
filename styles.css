@@ -30,9 +30,9 @@
 }
 
 .ImageTag-tag-selected {
-    background: var(--interactive-accent) !important;
-    color: var(--text-on-accent) !important;
-    border-color: var(--interactive-accent) !important;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
 }
 
 .ImageTag-btn-container {
@@ -238,7 +238,7 @@
 }
 
 .tag-hidden {
-    display: none !important;
+    display: none;
 }
 
 .tag-manager-item:hover .tag-name {
@@ -339,7 +339,7 @@
     font-size: 14px;
     font-weight: 500;
     transition: background-color 0.2s ease;
-    box-shadow: none !important;
+    box-shadow: none;
 }
 
 .tag-btn:hover {
@@ -376,8 +376,8 @@
 }
 
 .ImageTag-tag-selected .tag-count {
-    color: var(--text-on-accent) !important;
-    background: rgba(255, 255, 255, 0.2) !important;
+    color: var(--text-on-accent);
+    background: rgba(255, 255, 255, 0.2);
 }
 
 
