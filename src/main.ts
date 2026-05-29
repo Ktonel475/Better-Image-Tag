@@ -472,7 +472,7 @@ class TagManagerView {
 						if (newName && newName !== tag) {
 							try {
 								void this.EditTag(tag, newName)
-								new Notice(`Successfully renamed tag from #${tag} to #${newName}`)
+								new Notice(`Successfully renamed tag from ${tag} to ${newName}`)
 								tagName.setText(newName)
 							} catch (error) {
 								console.error("Failed to edit tag:", error)
@@ -549,24 +549,41 @@ class TagManagerView {
 		})
 		return tagItem
 	}
+
 	async EditTag(tag: string, edit: string) {
-		const files = this.plugin.app.vault.getMarkdownFiles()
+		const files = this.plugin.app.vault.getMarkdownFiles();
+		const tagRegex = new RegExp(`(#|\\-\\s)${tag}\\b`, 'g');
+
 		for (const file of files) {
 			try {
-				const content = await this.plugin.app.vault.read(file)
-				const tagRegex = new RegExp(`(#|\\-\\s)${tag}\\b`, 'g')
-				if (tagRegex.test(content)) {
-					tagRegex.lastIndex = 0
-					const newContent = content.replace(tagRegex, `$1${edit}`)
-					await this.plugin.app.vault.modify(file, newContent)
-				}
-				await this.plugin.addNewTag(edit)
-				await this.plugin.removeTag(tag)
+				// 1. Handle Frontmatter with Type Safety
+				await this.plugin.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+					const currentTags = frontmatter["tags"];
+
+					if (!currentTags) return;
+					if (Array.isArray(currentTags)) {
+						frontmatter["tags"] = (currentTags as unknown[]).map((t: unknown): string => {
+							const tagString = String(t);
+							return tagString === tag ? edit : tagString;
+						});
+					} else if (typeof currentTags === 'string' && currentTags === tag) {
+						frontmatter["tags"] = edit;
+					}
+				});
+
+				// 2. Handle Document Body
+				await this.plugin.app.vault.process(file, (data) => {
+					return tagRegex.test(data) ? data.replace(tagRegex, `$1${edit}`) : data;
+				});
+
 			} catch (error) {
 				console.error(`Error processing ${file.path}:`, error)
 				new Notice(`Failed to edit tag in ${String(error)}`)
 			}
 		}
+
+		await this.plugin.addNewTag(edit);
+		await this.plugin.removeTag(tag);
 	}
 
 	DeleteTag(tag: string) {
@@ -706,7 +723,7 @@ class TagManagerView {
 			cls: 'tag-btn'
 		})
 
-		addbtn.addEventListener('click', (e) => {
+		addbtn.addEventListener('click', () => {
 			this.handle.open()
 		})
 		// Close dropdown when clicking outside
