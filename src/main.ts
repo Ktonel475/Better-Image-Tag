@@ -1,4 +1,4 @@
-import { App, Editor, Modal, Notice, Plugin, Setting as PluginSettings, PluginSettingTab, ItemView, WorkspaceLeaf, TFile } from 'obsidian'
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, Setting as PluginSettings, PluginSettingTab, ItemView, WorkspaceLeaf, TFile } from 'obsidian'
 import { ImageTagSettings, DEFAULT_SETTINGS } from 'settings'
 
 const VIEW_TYPE_TAG_MANAGER = 'tag-manager-view'
@@ -43,7 +43,7 @@ export default class ImageTagPlugin extends Plugin {
 		this.addCommand({
 			id: 'tag-selected-image',
 			name: 'Tag selected image',
-			editorCallback: (editor: Editor) => {
+			editorCallback: (editor: Editor, view: MarkdownView) => {
 				const imageName = this.getImageLinkAtCursor(editor)
 
 				if (!imageName) {
@@ -432,13 +432,13 @@ class TagManagerView {
 		const btnContainer = tagItem.createDiv('btn-Container')
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Count number of tags, enable dynamic changing but no function
-		const countBadge = tagContent.createEl('span', {
+		const countBadge = tagContent.createSpan({
 			text: tagCount.toString(),
 			cls: 'tag-count'
 		})
 
 
-		const tagName = tagContent.createEl('span', {
+		const tagName = tagContent.createSpan({
 			text: tag,
 			cls: 'tag-name'
 		})
@@ -462,7 +462,7 @@ class TagManagerView {
 			title: 'Delete tag'
 		})
 
-		editBtn.addEventListener('click', (e) => {
+		editBtn.addEventListener('click', () => {
 			if (tagCount > 0) {
 				const modal = new EditModal(
 					this.plugin.app,
@@ -471,8 +471,8 @@ class TagManagerView {
 					(newName: string | null) => {
 						if (newName && newName !== tag) {
 							try {
-								void this.editTag(tag, newName)
-								new Notice(`Successfully renamed tag from ${tag} to ${newName}`)
+								void this.EditTag(tag, newName)
+								new Notice(`Successfully renamed tag from #${tag} to #${newName}`)
 								tagName.setText(newName)
 							} catch (error) {
 								console.error("Failed to edit tag:", error)
@@ -495,7 +495,7 @@ class TagManagerView {
 				input.select()
 
 				// Handle Enter to save
-				input.addEventListener('keydown', (e) => {
+				input.addEventListener('keydown', (e) => {    //TODO: add change to modify internal value of tag
 					if (e.key === 'Enter') {
 						const newTag = input.value.trim()
 						if (newTag && newTag !== tag) {
@@ -520,7 +520,7 @@ class TagManagerView {
 			}
 		})
 
-		deleteBtn.addEventListener('click', (e) => {
+		deleteBtn.addEventListener('click', () => {
 			void (async () => {
 				let confirmed = false
 				if (tagCount > 0) {
@@ -549,33 +549,26 @@ class TagManagerView {
 		})
 		return tagItem
 	}
-	async editTag(oldTag: string, newTag: string) {
-		const files = this.plugin.app.vault.getMarkdownFiles();
-
+	async EditTag(tag: string, edit: string) {
+		const files = this.plugin.app.vault.getMarkdownFiles()
 		for (const file of files) {
 			try {
-				await this.plugin.app.fileManager.processFrontMatter(file, (frontmatter) => {
-					// Check if 'tags' exists and is an array
-					if (frontmatter.tags && Array.isArray(frontmatter.tags)) {
-						const index = frontmatter.tags.indexOf(oldTag);
-						if (index !== -1) {
-							frontmatter.tags[index] = newTag;
-						}
-					}
-					// Handle cases where 'tags' might be a single string
-					else if (frontmatter.tags === oldTag) {
-						frontmatter.tags = newTag;
-					}
-				});
+				const content = await this.plugin.app.vault.read(file)
+				const tagRegex = new RegExp(`(#|\\-\\s)${tag}\\b`, 'g')
+				if (tagRegex.test(content)) {
+					tagRegex.lastIndex = 0
+					const newContent = content.replace(tagRegex, `$1${edit}`)
+					await this.plugin.app.vault.modify(file, newContent)
+				}
+				await this.plugin.addNewTag(edit)
+				await this.plugin.removeTag(tag)
 			} catch (error) {
-				console.error(`Error processing ${file.path}:`, error);
+				console.error(`Error processing ${file.path}:`, error)
+				new Notice(`Failed to edit tag in ${String(error)}`)
 			}
 		}
-
-		// Update your global tag list/cache after the loop
-		await this.plugin.addNewTag(newTag);
-		await this.plugin.removeTag(oldTag);
 	}
+
 	DeleteTag(tag: string) {
 		const tagsList = this.containerEl.querySelector('#tag-manager-list')
 		if (!tagsList) return
@@ -672,11 +665,11 @@ class TagManagerView {
 			const item = dropdown.createDiv('tag-sort-item')
 			item.setAttribute('data-sort', option.id)
 
-			item.createEl('span', {
+			item.createSpan({
 				text: option.icon,
 				cls: 'sort-icon'
 			})
-			item.createEl('span', {
+			item.createSpan({
 				text: option.text,
 				cls: 'sort-text'
 			})
@@ -717,7 +710,7 @@ class TagManagerView {
 			this.handle.open()
 		})
 		// Close dropdown when clicking outside
-		document.addEventListener('click', (e) => {
+		activeDocument.addEventListener('click', (e) => {
 			if (!controlContainer.contains(e.target as Node)) {
 				dropdown.classList.remove('active')
 			}
