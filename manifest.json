@@ -1,7 +1,7 @@
 {
 	"id": "better-image-tag",
 	"name": "Better Image Tag",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "1.7.2",
 	"description": "Visual image tagging with sidebar manager. Right-click images or select in-editor to tag with clickable buttons. Stores tags in plugin settings.",
 	"author": "Ktonel475",
