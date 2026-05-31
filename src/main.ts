@@ -596,15 +596,25 @@ class TagManagerView {
 
 		const tagItems = tagsList.querySelectorAll('.tag-manager-item')
 
+		const collator = new Intl.Collator(undefined, {
+			usage: 'search',
+			sensitivity: 'base'
+		})
+
 		tagItems.forEach(item => {
 			const tagName = item.querySelector('.tag-name')?.textContent || ''
-			const isVisible = tagName.includes(searchTerm)
 
-			if (isVisible) {
-				item.classList.remove('tag-hidden')
-			} else {
-				item.classList.add('tag-hidden')
-			}
+			// Locale-aware partial match
+			const isVisible =
+				searchTerm === '' ||
+				Array.from(tagName).some((_, i) =>
+					collator.compare(
+						tagName.slice(i, i + searchTerm.length),
+						searchTerm
+					) === 0
+				)
+
+			item.classList.toggle('tag-hidden', !isVisible)
 		})
 	}
 
@@ -823,19 +833,19 @@ class TagManagerView {
 		}
 	}
 
-	// Sort alphabetically (A-Z)
 	private sortByName(tagItems: Element[]) {
+		const collator = new Intl.Collator(undefined, {
+			numeric: true,
+			sensitivity: 'base'
+		})
+
 		tagItems.sort((a, b) => {
 			const aName = a.querySelector('.tag-name')?.textContent || ''
 			const bName = b.querySelector('.tag-name')?.textContent || ''
-			return aName.localeCompare(bName, undefined, {
-				numeric: true,
-				caseFirst: 'upper'
-			})
+			return collator.compare(aName, bName)
 		})
 	}
 
-	// Sort by count (descending), then alphabetically
 	private sortByCount(tagItems: Element[]) {
 		tagItems.sort((a, b) => {
 			const aCountText = a.querySelector('.tag-count')?.textContent || '0'
@@ -877,16 +887,9 @@ class TagManagerView {
 	private calculateRelevanceScore(tagName: string, searchTerm: string, count: number): number {
 		let score = 0
 
-		// Exact match gets highest priority
 		if (tagName === searchTerm) score += 1000
-
-		// Starts with search term
 		else if (tagName.startsWith(searchTerm)) score += 100
-
-		// Contains search term anywhere
 		else if (tagName.includes(searchTerm)) score += 10
-
-		// Boost by usage count (but less than search relevance)
 		score += Math.min(count, 5)
 
 		return score
@@ -897,7 +900,6 @@ class TagManagerView {
 		const tagsList = this.containerEl.querySelector('#tag-manager-list')
 		if (!tagsList) return
 
-		// Clear and re-add in sorted order
 		tagsList.innerHTML = ''
 		tagItems.forEach(item => {
 			if ((item as HTMLElement).style.display !== 'none') {
