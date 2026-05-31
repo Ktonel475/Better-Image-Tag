@@ -51,10 +51,12 @@
 
 /* ==================== SIDEBAR TAG MANAGER STYLES ==================== */
 .tag-manager-container {
-    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
     height: 100%;
-    overflow-y: auto;
+    padding: 10px 12px;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 .tag-manager-stats {
@@ -196,10 +198,12 @@
 
 /* Tags list */
 .tag-manager-list {
-    max-height: 100%;
+	flex: 1;
+	min-height: 0;
     overflow-y: auto;
-    margin-bottom: 20px;
     padding-right: 5px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
 }
 
 .tag-manager-item {

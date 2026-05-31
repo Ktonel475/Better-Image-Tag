@@ -95,7 +95,7 @@ export default class ImageTagPlugin extends Plugin {
 	}
 
 	async addNewTag(tag: string): Promise<boolean> {
-		const cleanTag = tag.trim().toLowerCase()
+		const cleanTag = tag.trim()
 
 		if (!cleanTag) return false
 		if (this.settings.tags.includes(cleanTag)) return false
@@ -157,9 +157,9 @@ export default class ImageTagPlugin extends Plugin {
 				const tagMatches = content.match(/(?:#|-\s)([a-zA-Z0-9_-]+)/g)
 				if (tagMatches) {
 					tagMatches.forEach(tagMatch => {
-						const cleanTag = tagMatch.replace(/^(?:#|-\s)/, '').toLowerCase().trim()
+						const cleanTag = tagMatch.replace(/^(?:#|-\s)/, '').trim()
 
-						if (cleanTag && cleanTag.length > 1) { // Skip single character tags
+						if (cleanTag) { // Skip single character tags
 							foundTags.add(cleanTag)
 						}
 					})
@@ -171,7 +171,7 @@ export default class ImageTagPlugin extends Plugin {
 					const tagsString = frontmatterMatch?.[1]
 					if (!tagsString) continue
 					const tags = tagsString.split(',').map(tag =>
-						tag.trim().replace(/["']/g, '').toLowerCase()
+						tag.trim().replace(/["']/g, '')
 					).filter(tag => tag.length > 1)
 
 					tags.forEach(tag => foundTags.add(tag))
@@ -595,11 +595,10 @@ class TagManagerView {
 		if (!tagsList) return
 
 		const tagItems = tagsList.querySelectorAll('.tag-manager-item')
-		const searchLower = searchTerm.toLowerCase()
 
 		tagItems.forEach(item => {
-			const tagName = item.querySelector('.tag-name')?.textContent?.toLowerCase() || ''
-			const isVisible = tagName.includes(searchLower)
+			const tagName = item.querySelector('.tag-name')?.textContent || ''
+			const isVisible = tagName.includes(searchTerm)
 
 			if (isVisible) {
 				item.classList.remove('tag-hidden')
