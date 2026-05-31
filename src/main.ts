@@ -828,7 +828,10 @@ class TagManagerView {
 		tagItems.sort((a, b) => {
 			const aName = a.querySelector('.tag-name')?.textContent || ''
 			const bName = b.querySelector('.tag-name')?.textContent || ''
-			return aName.localeCompare(bName, undefined, { numeric: true })
+			return aName.localeCompare(bName, undefined, {
+				numeric: true,
+				caseFirst: 'upper'
+			})
 		})
 	}
 
